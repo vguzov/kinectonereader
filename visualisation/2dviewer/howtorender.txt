@@ -1,0 +1,3 @@
+ffmpeg -f image2 -framerate 25 -pattern_type sequence -start_number 0 -r 25 -i %d.png -s 640x480 test.avi
+
+ffmpeg -framerate 25 -i %d.png -c:v libx264 -r 25 -pix_fmt yuv420p out.mp4
