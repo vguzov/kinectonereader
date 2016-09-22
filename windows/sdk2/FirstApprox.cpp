@@ -10,7 +10,9 @@
 #include "stdafx.h"
 #include <Kinect.h>
 #include "rply\rply.h"
+#include "cnpy\cnpy.h"
 #define WRITE_TO_BUFFER
+#define WRITE_NPY
 typedef std::pair<int*, bool*> depthmap;
 static const int        cScreenWidth = 320;
 static const int        cScreenHeight = 240;
@@ -43,6 +45,7 @@ HANDLE                  m_pSkeletonStreamHandle;
 HANDLE                  m_hNextSkeletonEvent;
 HANDLE                  m_pDepthStreamHandle;
 HANDLE                  m_hNextDepthFrameEvent;
+UINT16 *pDepthCopy;
 int frame_counter = 0;
 int holding_counter = 0;
 static const int frame_counter_all = 200;
@@ -63,6 +66,7 @@ void Draw(void);
 void WriteBufToPly(const char *filename_start);
 int _tmain(int argc, _TCHAR* argv[])
 {
+	pDepthCopy = new UINT16[cDepthWidth*cDepthHeight];
 	m_pCameraSpacePoints = new CameraSpacePoint[cDepthWidth*cDepthHeight];
 	m_depth = new int[cDepthWidth*cDepthHeight];
 	m_background = new int[cDepthWidth*cDepthHeight];
@@ -104,6 +108,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	delete[] m_depth_buffer.first;
 	delete[] m_depth_buffer.second;
 #endif
+	delete[] pDepthCopy;
 	delete[] m_pCameraSpacePoints;
 	delete[] m_background_vertex_nonskipped_counter;
 	delete[] m_background_vertex_skipped;
@@ -186,6 +191,26 @@ void NaiveBackgroundRemove(depthmap map, depthmap background, double average_noi
 	}
 }
 
+int WriteNpy(const char *filename, depthmap map)
+{
+	const unsigned int shape[] = { cDepthHeight, cDepthWidth };
+	for (int i = 0; i < cDepthHeight*cDepthWidth; i++)
+	{
+		if (!map.second[i])
+		{
+			map.first[i] = -1;
+		}
+		else
+		{
+			if (map.first[i] < 0)
+			{
+				map.first[i] = -map.first[i];
+			}
+		}
+	}
+	cnpy::npy_save(std::string(filename), map.first, shape, 2, "w");
+	return 1;
+}
 
 int WritePly(const char *filename, depthmap map)
 {
@@ -209,7 +234,6 @@ int WritePly(const char *filename, depthmap map)
 			}
 		}
 	}
-	//printf("Vertex=%d, faces=%d\n", vertex_count, faces_count);
 	ply_file = ply_create(filename,/*PLY_ASCII*/PLY_LITTLE_ENDIAN, NULL, 0, NULL);
 	if (ply_file == NULL)
 		return 0;
@@ -284,7 +308,11 @@ void WriteBufToPly(const char *filename_start)
 				m_vertex_skipped[i*cDepthWidth + j] = m_depth_buffer.second[(frame*cDepthHeight + i)*cDepthWidth + j];
 			}
 		}
+#ifdef WRITE_NPY
+		WriteNpy((std::string(filename_start) + std::to_string(frame + 1) + std::string(".npy")).c_str(), depthmap(m_depth, m_vertex_skipped));
+#else
 		WritePly((std::string(filename_start) + std::to_string(frame+1) + std::string(".ply")).c_str(), depthmap(m_depth, m_vertex_skipped));
+#endif
 	}
 }
 t_depthstream_state ProcessDepth(t_depthstream_state state, INT64 nTime, const UINT16* pBuffer, int nWidth, int nHeight, USHORT nMinDepth, USHORT nMaxDepth)
@@ -293,14 +321,15 @@ t_depthstream_state ProcessDepth(t_depthstream_state state, INT64 nTime, const U
 	long size = nWidth * nHeight;
 	// end pixel is start + width*height - 1
 	const UINT16* pBufferEnd = pBuffer + (nWidth * nHeight);
+	
 
 	int ind_i = 0, ind_j = 0;
 
-
+	memcpy(pDepthCopy, pBuffer, size*sizeof(UINT16));
 	if (m_bFloorDetected)
 	{
 		//Map entire frame from depth space to camera space
-		m_pCoordinateMapper->MapDepthFrameToCameraSpace(size, (UINT16*)pBuffer, size, m_pCameraSpacePoints);
+		m_pCoordinateMapper->MapDepthFrameToCameraSpace(size, (UINT16*)pDepthCopy, size, m_pCameraSpacePoints);
 
 		Vector4 fcp = m_fFloorClipPlane;
 
@@ -318,11 +347,11 @@ t_depthstream_state ProcessDepth(t_depthstream_state state, INT64 nTime, const U
 			//distance comparison in meters 0.02f = 2 cm
 			if (dist < 0.02f)
 			{
-				m_vertex_skipped[i] = true;
+				m_vertex_skipped[i] = false;
 			}
 			else
 			{
-				m_vertex_skipped[i] = false;
+				m_vertex_skipped[i] = true;
 			}
 		}
 	}
@@ -340,7 +369,7 @@ t_depthstream_state ProcessDepth(t_depthstream_state state, INT64 nTime, const U
 
 		// Note: Using conditionals in this loop could degrade performance.
 		// Consider using a lookup table instead when writing production code.
-		if (depth >= nMinDepth && depth <= nMaxDepth)
+		if ((depth >= nMinDepth) && (depth <= nMaxDepth))
 		{
 			m_depth[ind_i*cDepthWidth + ind_j] = depth;
 		}
@@ -388,7 +417,11 @@ t_depthstream_state ProcessDepth(t_depthstream_state state, INT64 nTime, const U
 					m_background_vertex_skipped[i*cDepthWidth + j] = true;
 			}
 		}
+#ifdef WRITE_NPY
+		WriteNpy(".\\output\\background.npy", depthmap(m_background, m_background_vertex_skipped));
+#else
 		WritePly(".\\output\\background.ply", depthmap(m_background, m_background_vertex_skipped));
+#endif
 		state = DS_BACKGROUND_COMPLETE;
 	}
 	else
@@ -399,8 +432,13 @@ t_depthstream_state ProcessDepth(t_depthstream_state state, INT64 nTime, const U
 #ifdef WRITE_TO_BUFFER
 		WriteBuf(frame_counter - 1, depthmap(m_depth, m_vertex_skipped));
 #else
+#ifdef WRITE_NPY
+		WriteNpy((std::string(".\\output\\output") + std::to_string(frame_counter) + std::string(".npy")).c_str(), 
+			depthmap(m_depth, m_vertex_skipped));
+#else
 		WritePly((std::string(".\\output\\output") + std::to_string(frame_counter) + std::string(".ply")).c_str(), 
 			depthmap(m_depth, m_vertex_skipped));
+#endif
 #endif
 		state = DS_REALTIME_CAPTURING;
 	}
@@ -426,7 +464,7 @@ Point BodyToScreen(const CameraSpacePoint& bodyPoint, int width, int height)
 }
 void HandleJoints(const Point *m_Points, int points_count)
 {
-	FILE* skel_file = fopen((std::string("./output/output") + std::to_string(frame_counter) + std::string(".txt")).c_str(), "w");
+	FILE* skel_file = fopen((std::string(".\\output\\output") + std::to_string(frame_counter) + std::string(".txt")).c_str(), "w");
 	for (int i = 0; i < points_count; ++i)
 	{
 		fprintf(skel_file,"Point %d: %.2f %.2f\n", i, m_Points[i].first, m_Points[i].second);
@@ -486,11 +524,6 @@ t_depthstream_state Update(t_depthstream_state state)
 		hr = pBodyFrame->get_RelativeTime(&nTime);
 
 		IBody* ppBodies[BODY_COUNT] = { 0 };
-
-		if (SUCCEEDED(hr))
-		{
-			hr = pBodyFrame->GetAndRefreshBodyData(_countof(ppBodies), ppBodies);
-		}
 		Vector4 fcp;
 		hr = pBodyFrame->get_FloorClipPlane(&fcp);
 
@@ -499,6 +532,11 @@ t_depthstream_state Update(t_depthstream_state state)
 			m_fFloorClipPlane = fcp;
 			m_bFloorDetected = true;
 		}
+		if (SUCCEEDED(hr))
+		{
+			hr = pBodyFrame->GetAndRefreshBodyData(_countof(ppBodies), ppBodies);
+		}
+		
 		if (SUCCEEDED(hr))
 		{
 			ProcessSkeleton(nTime, BODY_COUNT, ppBodies);

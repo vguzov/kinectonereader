@@ -3,12 +3,48 @@ from skimage.io import imsave
 from os.path import isfile
 from PIL import Image, ImageDraw
 import sys
+import os
 
+start_frame=0
+frames = 100
+zmax = 5000
+zmin = 0
+zthresh = (1000,6000)
+KINECT_SHAPE = (424,512)
+zmim,zmax=zthresh
 
-def background_remove(vmap, background, surface = None):
+def background_remove_old(vmap, background, surface = None):
     vmap[vmap>=surface] = 0
     vmap[np.logical_and(background>0.01,np.abs(vmap-background)<0.03)]=0
     return vmap
+	
+def background_remove(vmap, points):
+    h,w = vmap.shape
+    nblist = [(points[1,1],w-points[1,0]-1)]
+    for pt in nblist:
+        print(pt)
+        vcty = np.arange(-pt[0],h-pt[0])
+        vctx = np.arange(-pt[1],w-pt[1])
+        dists=vcty[:,np.newaxis]**2+vctx**2+((vmap[pt[1],pt[0]]-vmap)*1000)**2
+        dists = np.sqrt(dists)
+        cnd = np.argwhere(dists<100)
+        nblist += list(cnd)
+        break
+#        for c in cnd:
+#            if not (tuple(c) in nblist):
+#                nblist.append(tuple(c))
+    newmap = np.zeros((h,w))
+    for pt in nblist:
+        newmap[pt[0],pt[1]] = vmap[pt[0],pt[1]]
+    return newmap
+        
+        
+    
+def load_npy(path):
+    arr = np.load(path).astype(np.float32)
+    arr[arr>zthresh[1]]=zthresh[1]
+    arr[arr<zthresh[0]]=zthresh[0]
+    return arr
 
 def estimate_surface(background):
     dot1 = background[320,230:250]
@@ -58,6 +94,7 @@ skel_lines=[
     (18,19)
 ]
 def draw_n_save(filename,img,points):
+    points[:,0] = KINECT_SHAPE[1]-points[:,0]
     radius = 0.008*KINECT_SHAPE[0]
     point_color = (255,0,0)
     line_color = (0,255,0)
@@ -73,45 +110,44 @@ def draw_n_save(filename,img,points):
         pil_draw.ellipse((pt[0]-radius,pt[1]-radius,pt[0]+radius,pt[1]+radius),fill=point_color)
     pil_img.save(filename)
     
-start_frame=0
-frames = 300
-zmax = 5000
-zmin = 0
+
 if len(sys.argv)<3:
     print("Usage: %s input_folder output_folder [frames]" % (sys.argv[0]))
     sys.exit(1)
-folder = sys.argv[1] if sys.argv[1][-1]=='/' else sys.argv[1]+'/'
-out_folder = sys.argv[2] if sys.argv[2][-1]=='/' else sys.argv[2]+'/'
+#folder = sys.argv[1] if sys.argv[1][-1]=='/' else sys.argv[1]+'/'
+#out_folder = sys.argv[2] if sys.argv[2][-1]=='/' else sys.argv[2]+'/'
+folder = sys.argv[1]
+out_folder = sys.argv[2]
 if len(sys.argv) >= 4:
     frames = int(sys.argv[3])
 
 
-# print("Determining minmax")
-# for i in range (1,2):
-#     plydata = PlyData.read(folder+"output"+str(i)+".ply")
-#     verts = plydata['vertex']
-#     zmax = max(verts['z'].max(),zmax)
-#     zmin = min(verts['z'].min(),zmin)
-# print("Min:",zmin,"max:",zmax)
+#print("Determining minmax")
+#imarr = np.zeros((frames,KINECT_SHAPE[0],KINECT_SHAPE[1]))
+#for i in range(1,frames+1):
+#    imarr[i-1,:,:] = np.load(os.path.join(folder,"output" + str(i+start_frame) + ".npy")).astype(np.float32)
+#imarr[imarr==-1]=float('nan')
+#zthresh = (np.nanpercentile(imarr, 10),np.nanpercentile(imarr, 99.5))
+zmin,zmax = zthresh
+print("Min:",zmin,"max:",zmax)
 print("Creating pictures")
-# plydata = PlyData.read(folder+"background.ply")
-# background = verts_to_map(plydata['vertex'],zmin,zmax).copy()
-vmap = np.load(folder + "background.npy")
+vmap = load_npy(os.path.join(folder, "background.npy"))
 background = (vmap-zmin)/(zmax-zmin)
 background = background[:,::-1]
-surface = estimate_surface(background)
-imsave(out_folder+'background.png',background)
+#surface = estimate_surface(background)
+imsave(os.path.join(out_folder,'background.png'),background)
 for i in range (1,frames+1):
     print(i,"of",frames)
-    vmap = np.load(folder + "output" + str(i+start_frame) + ".npy")
+    vmap = load_npy(os.path.join(folder,"output" + str(i+start_frame) + ".npy"))
     vmap = (vmap-zmin)/(zmax-zmin)
     vmap = vmap[:,::-1]
-    vmap = background_remove(vmap,background,surface)
-    if isfile(folder + "output" + str(i+start_frame) + ".txt"):
-        points = np.loadtxt(folder + "output" + str(i+start_frame) + ".txt",usecols=(2,3))*2
-        draw_n_save(out_folder+str(i+start_frame)+'.png',vmap,points)
+    #vmap = background_remove(vmap,background,surface)
+    if isfile(os.path.join(folder,"output" + str(i+start_frame) + ".txt")):
+        points = np.loadtxt(os.path.join(folder, "output" + str(i+start_frame) + ".txt"),usecols=(2,3))
+        vmap = background_remove(vmap,points)
+        draw_n_save(os.path.join(out_folder,str(i+start_frame)+'.png'),vmap,points)
     else:
-        imsave(out_folder+str(i+start_frame)+'.png',vmap)
+        imsave(os.path.join(out_folder,str(i+start_frame)+'.png'),vmap)
 
 
 
