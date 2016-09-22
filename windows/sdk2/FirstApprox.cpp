@@ -14,8 +14,8 @@
 typedef std::pair<int*, bool*> depthmap;
 static const int        cScreenWidth = 320;
 static const int        cScreenHeight = 240;
-static const int        cDepthWidth = 640;
-static const int        cDepthHeight = 480;
+static const int        cDepthWidth = 512;
+static const int        cDepthHeight = 424;
 static const int        cBytesPerPixel = 4;
 
 static const int        cStatusMessageMaxLen = MAX_PATH * 2;
@@ -28,6 +28,9 @@ IDepthFrameReader*      m_pDepthFrameReader = NULL;
 ICoordinateMapper*      m_pCoordinateMapper;
 
 // Body reader
+bool                    m_bFloorDetected = false;
+Vector4                 m_fFloorClipPlane;
+CameraSpacePoint*       m_pCameraSpacePoints;
 IBodyFrameReader*       m_pBodyFrameReader;
 int*                    m_depth;
 int*                    m_background;
@@ -60,6 +63,7 @@ void Draw(void);
 void WriteBufToPly(const char *filename_start);
 int _tmain(int argc, _TCHAR* argv[])
 {
+	m_pCameraSpacePoints = new CameraSpacePoint[cDepthWidth*cDepthHeight];
 	m_depth = new int[cDepthWidth*cDepthHeight];
 	m_background = new int[cDepthWidth*cDepthHeight];
 	m_vertex_skipped = new bool[cDepthWidth*cDepthHeight];
@@ -100,6 +104,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	delete[] m_depth_buffer.first;
 	delete[] m_depth_buffer.second;
 #endif
+	delete[] m_pCameraSpacePoints;
 	delete[] m_background_vertex_nonskipped_counter;
 	delete[] m_background_vertex_skipped;
 	delete[] m_depth;
@@ -285,11 +290,43 @@ void WriteBufToPly(const char *filename_start)
 t_depthstream_state ProcessDepth(t_depthstream_state state, INT64 nTime, const UINT16* pBuffer, int nWidth, int nHeight, USHORT nMinDepth, USHORT nMaxDepth)
 {
 	HRESULT hr;
-
+	long size = nWidth * nHeight;
 	// end pixel is start + width*height - 1
 	const UINT16* pBufferEnd = pBuffer + (nWidth * nHeight);
 
 	int ind_i = 0, ind_j = 0;
+
+
+	if (m_bFloorDetected)
+	{
+		//Map entire frame from depth space to camera space
+		m_pCoordinateMapper->MapDepthFrameToCameraSpace(size, (UINT16*)pBuffer, size, m_pCameraSpacePoints);
+
+		Vector4 fcp = m_fFloorClipPlane;
+
+		float divisor = sqrtf(fcp.x * fcp.x + fcp.y * fcp.y + fcp.z * fcp.z);
+
+		CameraSpacePoint s;
+
+		for (int i = 0; i < size; i++)
+		{
+			s = m_pCameraSpacePoints[i];
+
+			//Calculate distance from floor plane to current camera space point             
+			float dist = (fcp.x * s.X + fcp.y * s.Y + fcp.z * s.Z + fcp.w) / divisor;
+
+			//distance comparison in meters 0.02f = 2 cm
+			if (dist < 0.02f)
+			{
+				m_vertex_skipped[i] = true;
+			}
+			else
+			{
+				m_vertex_skipped[i] = false;
+			}
+		}
+	}
+
 
 	while (pBuffer < pBufferEnd)
 	{
@@ -306,7 +343,6 @@ t_depthstream_state ProcessDepth(t_depthstream_state state, INT64 nTime, const U
 		if (depth >= nMinDepth && depth <= nMaxDepth)
 		{
 			m_depth[ind_i*cDepthWidth + ind_j] = depth;
-			m_vertex_skipped[ind_i*cDepthWidth + ind_j] = false;
 		}
 		else
 		{
@@ -377,28 +413,22 @@ void Draw(void)
 }
 typedef std::pair<float, float> Point;
 
-Point SkeletonToScreen(Vector4 skeletonPoint, int width, int height)
+Point BodyToScreen(const CameraSpacePoint& bodyPoint, int width, int height)
 {
-	LONG x, y;
-	USHORT depth;
+	// Calculate the body's position on the screen
+	DepthSpacePoint depthPoint = { 0 };
+	m_pCoordinateMapper->MapCameraPointToDepthSpace(bodyPoint, &depthPoint);
 
-	// Calculate the skeleton's position on the screen
-	// NuiTransformSkeletonToDepthImage returns coordinates in NUI_IMAGE_RESOLUTION_320x240 space
-	NuiTransformSkeletonToDepthImage(skeletonPoint, &x, &y, &depth);
-
-	float screenPointX = static_cast<float>(x * width) / cScreenWidth;
-	float screenPointY = static_cast<float>(y * height) / cScreenHeight;
+	float screenPointX = static_cast<float>(depthPoint.X * width) / cDepthWidth;
+	float screenPointY = static_cast<float>(depthPoint.Y * height) / cDepthHeight;
 
 	return Point(screenPointX, screenPointY);
 }
-
-void HandleSkeleton(const NUI_SKELETON_DATA & skel)
+void HandleJoints(const Point *m_Points, int points_count)
 {
 	FILE* skel_file = fopen((std::string("./output/output") + std::to_string(frame_counter) + std::string(".txt")).c_str(), "w");
-	Point *m_Points = new Point[NUI_SKELETON_POSITION_COUNT];
-	for (int i = 0; i < NUI_SKELETON_POSITION_COUNT; ++i)
+	for (int i = 0; i < points_count; ++i)
 	{
-		m_Points[i] = SkeletonToScreen(skel.SkeletonPositions[i], cScreenWidth, cScreenHeight);
 		fprintf(skel_file,"Point %d: %.2f %.2f\n", i, m_Points[i].first, m_Points[i].second);
 	}
 	fclose(skel_file);
@@ -406,115 +436,35 @@ void HandleSkeleton(const NUI_SKELETON_DATA & skel)
 
 void ProcessSkeleton(INT64 nTime, int nBodyCount, IBody** ppBodies)
 {
-		HRESULT hr = EnsureDirect2DResources();
+	int width = cDepthWidth;
+	int height = cDepthHeight;
+	HRESULT hr;
 
-		if (SUCCEEDED(hr) && m_pRenderTarget && m_pCoordinateMapper)
+	for (int i = 0; i < nBodyCount; ++i)
+	{
+		IBody* pBody = ppBodies[i];
+		if (pBody)
 		{
-			m_pRenderTarget->BeginDraw();
-			m_pRenderTarget->Clear();
+			BOOLEAN bTracked = false;
+			hr = pBody->get_IsTracked(&bTracked);
 
-			RECT rct;
-			GetClientRect(GetDlgItem(m_hWnd, IDC_VIDEOVIEW), &rct);
-			int width = rct.right;
-			int height = rct.bottom;
-
-			for (int i = 0; i < nBodyCount; ++i)
+			if (SUCCEEDED(hr) && bTracked)
 			{
-				IBody* pBody = ppBodies[i];
-				if (pBody)
-				{
-					BOOLEAN bTracked = false;
-					hr = pBody->get_IsTracked(&bTracked);
+				Joint joints[JointType_Count];
+				Point jointPoints[JointType_Count];
 
-					if (SUCCEEDED(hr) && bTracked)
+				hr = pBody->GetJoints(_countof(joints), joints);
+				if (SUCCEEDED(hr))
+				{
+					for (int j = 0; j < _countof(joints); ++j)
 					{
-						Joint joints[JointType_Count];
-						D2D1_POINT_2F jointPoints[JointType_Count];
-						HandState leftHandState = HandState_Unknown;
-						HandState rightHandState = HandState_Unknown;
-
-						pBody->get_HandLeftState(&leftHandState);
-						pBody->get_HandRightState(&rightHandState);
-
-						hr = pBody->GetJoints(_countof(joints), joints);
-						if (SUCCEEDED(hr))
-						{
-							for (int j = 0; j < _countof(joints); ++j)
-							{
-								jointPoints[j] = BodyToScreen(joints[j].Position, width, height);
-							}
-
-							DrawBody(joints, jointPoints);
-
-							DrawHand(leftHandState, jointPoints[JointType_HandLeft]);
-							DrawHand(rightHandState, jointPoints[JointType_HandRight]);
-						}
+						jointPoints[j] = BodyToScreen(joints[j].Position, width, height);
 					}
+
+					HandleJoints(jointPoints, JointType_Count);
+					break;
 				}
 			}
-
-			hr = m_pRenderTarget->EndDraw();
-
-			// Device lost, need to recreate the render target
-			// We'll dispose it now and retry drawing
-			if (D2DERR_RECREATE_TARGET == hr)
-			{
-				hr = S_OK;
-				DiscardDirect2DResources();
-			}
-		}
-
-		if (!m_nStartTime)
-		{
-			m_nStartTime = nTime;
-		}
-
-		double fps = 0.0;
-
-		LARGE_INTEGER qpcNow = { 0 };
-		if (m_fFreq)
-		{
-			if (QueryPerformanceCounter(&qpcNow))
-			{
-				if (m_nLastCounter)
-				{
-					m_nFramesSinceUpdate++;
-					fps = m_fFreq * m_nFramesSinceUpdate / double(qpcNow.QuadPart - m_nLastCounter);
-				}
-			}
-		}
-
-		WCHAR szStatusMessage[64];
-		StringCchPrintf(szStatusMessage, _countof(szStatusMessage), L" FPS = %0.2f    Time = %I64d", fps, (nTime - m_nStartTime));
-
-		if (SetStatusMessage(szStatusMessage, 1000, false))
-		{
-			m_nLastCounter = qpcNow.QuadPart;
-			m_nFramesSinceUpdate = 0;
-		}
-
-	NUI_SKELETON_FRAME skeletonFrame = { 0 };
-
-	HRESULT hr = m_pNuiSensor->NuiSkeletonGetNextFrame(0, &skeletonFrame);
-	if (FAILED(hr))
-	{
-		return;
-	}
-
-	// smooth out the skeleton data
-	m_pNuiSensor->NuiTransformSmooth(&skeletonFrame, NULL);
-
-	//printf("F");
-
-	for (int i = 0; i < NUI_SKELETON_COUNT; ++i)
-	{
-		NUI_SKELETON_TRACKING_STATE trackingState = skeletonFrame.SkeletonData[i].eTrackingState;
-
-		if (NUI_SKELETON_TRACKED == trackingState)
-		{
-			// We're tracking the skeleton, draw it
-			HandleSkeleton(skeletonFrame.SkeletonData[i]);
-
 		}
 	}
 }
@@ -525,6 +475,7 @@ t_depthstream_state Update(t_depthstream_state state)
 		return DS_COMPLETE;
 	}
 	IBodyFrame* pBodyFrame = NULL;
+
 
 	HRESULT hr = m_pBodyFrameReader->AcquireLatestFrame(&pBodyFrame);
 
@@ -540,7 +491,14 @@ t_depthstream_state Update(t_depthstream_state state)
 		{
 			hr = pBodyFrame->GetAndRefreshBodyData(_countof(ppBodies), ppBodies);
 		}
+		Vector4 fcp;
+		hr = pBodyFrame->get_FloorClipPlane(&fcp);
 
+		if (SUCCEEDED(hr))
+		{
+			m_fFloorClipPlane = fcp;
+			m_bFloorDetected = true;
+		}
 		if (SUCCEEDED(hr))
 		{
 			ProcessSkeleton(nTime, BODY_COUNT, ppBodies);
@@ -556,7 +514,7 @@ t_depthstream_state Update(t_depthstream_state state)
 
 	IDepthFrame* pDepthFrame = NULL;
 
-	HRESULT hr = m_pDepthFrameReader->AcquireLatestFrame(&pDepthFrame);
+	 hr = m_pDepthFrameReader->AcquireLatestFrame(&pDepthFrame);
 
 	if (SUCCEEDED(hr))
 	{

@@ -30,6 +30,13 @@
 
 # Visual studio debug information
 *.sdf
+*.opensdf
+*.idb
+*.pdb
+*.tlog
 
 # Mac .DS_Store
 .DS_Store
+
+#output folder
+output
