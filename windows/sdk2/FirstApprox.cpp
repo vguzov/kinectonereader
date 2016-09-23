@@ -48,7 +48,7 @@ HANDLE                  m_hNextDepthFrameEvent;
 UINT16 *pDepthCopy;
 int frame_counter = 0;
 int holding_counter = 0;
-static const int frame_counter_all = 200;
+static const int frame_counter_all = 300;
 static const int holding_counter_all = 3;
 int background_capture_all = 200;
 int background_capture_remain = background_capture_all;
@@ -345,7 +345,7 @@ t_depthstream_state ProcessDepth(t_depthstream_state state, INT64 nTime, const U
 			float dist = (fcp.x * s.X + fcp.y * s.Y + fcp.z * s.Z + fcp.w) / divisor;
 
 			//distance comparison in meters 0.02f = 2 cm
-			if (dist < 0.02f)
+			if (dist < 0.01f)
 			{
 				m_vertex_skipped[i] = false;
 			}

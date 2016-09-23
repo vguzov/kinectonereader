@@ -7,6 +7,7 @@
 #include<cstdlib>
 #include<algorithm>
 #include<cstring>
+#include <cstdio>
 #include<iomanip>
 
 char cnpy::BigEndianTest() {

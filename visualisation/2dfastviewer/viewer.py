@@ -104,12 +104,19 @@ def draw_n_save(filename,img,points):
     pil_draw = ImageDraw.Draw(pil_img)
     for line in skel_lines:
         coords = np.hstack((points[line[0],:],points[line[1],:]))
-        pil_draw.line((coords[0],coords[1],coords[2],coords[3]),fill=line_color,width=line_width)
+        if not np.isnan(coords).any():
+            pil_draw.line((coords[0],coords[1],coords[2],coords[3]),fill=line_color,width=line_width)
     for j in range(points.shape[0]):
         pt = points[j,:]
-        pil_draw.ellipse((pt[0]-radius,pt[1]-radius,pt[0]+radius,pt[1]+radius),fill=point_color)
+        if not np.isnan(pt).any():    
+            pil_draw.ellipse((pt[0]-radius,pt[1]-radius,pt[0]+radius,pt[1]+radius),fill=point_color)
     pil_img.save(filename)
     
+def txtconvert(text):
+    if text==b'-1.#J':
+        return np.nan
+    else:
+        return float(text)
 
 if len(sys.argv)<3:
     print("Usage: %s input_folder output_folder [frames]" % (sys.argv[0]))
@@ -143,8 +150,9 @@ for i in range (1,frames+1):
     vmap = vmap[:,::-1]
     #vmap = background_remove(vmap,background,surface)
     if isfile(os.path.join(folder,"output" + str(i+start_frame) + ".txt")):
-        points = np.loadtxt(os.path.join(folder, "output" + str(i+start_frame) + ".txt"),usecols=(2,3))
-        vmap = background_remove(vmap,points)
+        points = np.loadtxt(os.path.join(folder, "output" + str(i+start_frame) + ".txt"),
+                            usecols=(2,3),comments=';',converters={2:txtconvert,3:txtconvert})
+        #vmap = background_remove(vmap,points)
         draw_n_save(os.path.join(out_folder,str(i+start_frame)+'.png'),vmap,points)
     else:
         imsave(os.path.join(out_folder,str(i+start_frame)+'.png'),vmap)
