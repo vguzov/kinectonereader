@@ -345,7 +345,7 @@ t_depthstream_state ProcessDepth(t_depthstream_state state, INT64 nTime, const U
 			float dist = (fcp.x * s.X + fcp.y * s.Y + fcp.z * s.Z + fcp.w) / divisor;
 
 			//distance comparison in meters 0.02f = 2 cm
-			if (dist < 0.01f)
+			if (dist < 0.02f)
 			{
 				m_vertex_skipped[i] = false;
 			}
