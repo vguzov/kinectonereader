@@ -13,12 +13,12 @@ zthresh = (1000,6000)
 KINECT_SHAPE = (424,512)
 zmim,zmax=zthresh
 
-def background_remove_old(vmap, background, surface = None):
+def background_remove_oldest(vmap, background, surface = None):
     vmap[vmap>=surface] = 0
     vmap[np.logical_and(background>0.01,np.abs(vmap-background)<0.03)]=0
     return vmap
 	
-def background_remove(vmap, points):
+def background_remove_old(vmap, points):
     h,w = vmap.shape
     nblist = [(points[1,1],w-points[1,0]-1)]
     for pt in nblist:
@@ -38,7 +38,24 @@ def background_remove(vmap, points):
         newmap[pt[0],pt[1]] = vmap[pt[0],pt[1]]
     return newmap
         
-        
+def background_remove(vmap, points):
+    h,w=vmap.shape
+    wfpts = np.zeros((h,w),np.bool)
+    nhpts = np.zeros((h,w),np.bool)
+    nhpts_old = nhpts.copy()
+    nhpts[points[1,1],w-points[1,0]-1]=True
+    #while not np.array_equal(nhpts,nhpts_old):
+    for i in range(2):
+        cnd = np.argwhere(np.logical_xor(nhpts,wfpts))
+        nhpts_old = nhpts.copy()
+        for pt in cnd:
+            vcty = np.arange(-pt[0],h-pt[0])
+            vctx = np.arange(-pt[1],w-pt[1])
+            dists=vcty[:,np.newaxis]**2+vctx**2+((vmap[pt[0],pt[1]]-vmap)*1000)**2
+            nhpts = np.logical_or(nhpts,dists<10**2)
+        wfpts = nhpts_old.copy()
+    return np.where(nhpts,vmap,np.zeros((h,w)))
+            
     
 def load_npy(path):
     arr = np.load(path).astype(np.float32)
@@ -152,7 +169,7 @@ for i in range (1,frames+1):
     if isfile(os.path.join(folder,"output" + str(i+start_frame) + ".txt")):
         points = np.loadtxt(os.path.join(folder, "output" + str(i+start_frame) + ".txt"),
                             usecols=(2,3),comments=';',converters={2:txtconvert,3:txtconvert})
-        #vmap = background_remove(vmap,points)
+        vmap = background_remove(vmap,points)
         draw_n_save(os.path.join(out_folder,str(i+start_frame)+'.png'),vmap,points)
     else:
         imsave(os.path.join(out_folder,str(i+start_frame)+'.png'),vmap)
