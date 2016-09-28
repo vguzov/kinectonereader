@@ -2,6 +2,7 @@ import numpy as np
 from skimage.io import imsave
 from os.path import isfile
 from PIL import Image, ImageDraw
+from sklearn.cluster import DBSCAN
 import sys
 import os
 
@@ -38,24 +39,50 @@ def background_remove_old(vmap, points):
         newmap[pt[0],pt[1]] = vmap[pt[0],pt[1]]
     return newmap
         
-def background_remove(vmap, points):
+def background_remove_slow(vmap, points):
     h,w=vmap.shape
     wfpts = np.zeros((h,w),np.bool)
     nhpts = np.zeros((h,w),np.bool)
     nhpts_old = nhpts.copy()
     nhpts[points[1,1],w-points[1,0]-1]=True
-    #while not np.array_equal(nhpts,nhpts_old):
-    for i in range(2):
+    DSQ_THRESH = 10**2
+    DIST_MAT = np.arange(-h,h)[:,np.newaxis]**2+np.arange(-w,w)**2
+    while not np.array_equal(nhpts,nhpts_old):
+#    for i in range(2):
         cnd = np.argwhere(np.logical_xor(nhpts,wfpts))
         nhpts_old = nhpts.copy()
+        mindists = np.ones((h,w))*DSQ_THRESH
         for pt in cnd:
-            vcty = np.arange(-pt[0],h-pt[0])
-            vctx = np.arange(-pt[1],w-pt[1])
-            dists=vcty[:,np.newaxis]**2+vctx**2+((vmap[pt[0],pt[1]]-vmap)*1000)**2
-            nhpts = np.logical_or(nhpts,dists<10**2)
+            dists=DIST_MAT[h-pt[0]:h*2-pt[0],w-pt[1]:w*2-pt[1]]+((vmap[pt[0],pt[1]]-vmap)*1000)**2
+            mindists = np.minimum(dists,mindists)
+        nhpts = np.logical_or(nhpts,mindists<DSQ_THRESH)
         wfpts = nhpts_old.copy()
     return np.where(nhpts,vmap,np.zeros((h,w)))
-            
+
+steady_points = [1,2,3,5,9,14,18]
+def background_remove(vmap,points,ifr):
+    h,w = vmap.shape
+    features = np.vstack(((np.arange(0,h)[:,np.newaxis]*np.ones((1,w))).flatten(),
+                          (np.arange(0,w)*np.ones((h,1))).flatten(),vmap.flatten()*1000)).transpose()
+    scan = DBSCAN(eps=7, min_samples=50, metric='euclidean', algorithm='auto')
+    labels = scan.fit_predict(features)
+    labels=labels.reshape((h,w))
+    pts = [(points[i,1],w-points[i,0]-1) for i in range(len(points))]
+    mask = np.zeros((h,w),dtype=np.bool)
+    for i in steady_points:
+        mask = np.logical_or(mask,labels==labels[pts[i][0],pts[i][1]])
+    ans = np.where(mask,vmap,np.zeros((h,w)))
+    print(np.unique(labels))
+    colors = {}
+    pic = np.zeros((h,w,3))
+    for i in range(h):
+        for j in range(w):
+            if not (labels[i,j] in colors):
+                colors[labels[i,j]] = (np.random.random(),np.random.random(),np.random.random())
+            if (labels[i,j]>-1):
+                pic[i,j,:] = colors[labels[i,j]]
+    imsave("pic"+str(ifr)+".png",pic)
+    return ans
     
 def load_npy(path):
     arr = np.load(path).astype(np.float32)
@@ -169,7 +196,7 @@ for i in range (1,frames+1):
     if isfile(os.path.join(folder,"output" + str(i+start_frame) + ".txt")):
         points = np.loadtxt(os.path.join(folder, "output" + str(i+start_frame) + ".txt"),
                             usecols=(2,3),comments=';',converters={2:txtconvert,3:txtconvert})
-        vmap = background_remove(vmap,points)
+        vmap = background_remove(vmap,points,i)
         draw_n_save(os.path.join(out_folder,str(i+start_frame)+'.png'),vmap,points)
     else:
         imsave(os.path.join(out_folder,str(i+start_frame)+'.png'),vmap)

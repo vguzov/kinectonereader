@@ -12,7 +12,7 @@
 #include "rply\rply.h"
 #include "cnpy\cnpy.h"
 #define WRITE_TO_BUFFER
-#define WRITE_NPY
+//#define WRITE_NPY
 typedef std::pair<int*, bool*> depthmap;
 static const int        cScreenWidth = 320;
 static const int        cScreenHeight = 240;

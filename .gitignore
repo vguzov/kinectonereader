@@ -39,5 +39,5 @@
 .DS_Store
 
 #output folder
-output
+output*
 all_output
