@@ -15,7 +15,8 @@ KINECT_SHAPE = (424,512)
 zmim,zmax=zthresh
 
 def background_remove_oldest(vmap, background, surface = None):
-    vmap[vmap>=surface] = 0
+    if not (surface is None):
+        vmap[vmap>=surface] = 0
     vmap[np.logical_and(background>0.01,np.abs(vmap-background)<0.03)]=0
     return vmap
 	
@@ -63,14 +64,15 @@ steady_points = [1,2,3,5,9,14,18]
 def background_remove(vmap,points,ifr):
     h,w = vmap.shape
     features = np.vstack(((np.arange(0,h)[:,np.newaxis]*np.ones((1,w))).flatten(),
-                          (np.arange(0,w)*np.ones((h,1))).flatten(),vmap.flatten()*1000)).transpose()
-    scan = DBSCAN(eps=7, min_samples=50, metric='euclidean', algorithm='auto')
+                          (np.arange(0,w)*np.ones((h,1))).flatten(),vmap.flatten()*100)).transpose()
+    scan = DBSCAN(eps=5, min_samples=50, metric='euclidean', algorithm='auto')
     labels = scan.fit_predict(features)
     labels=labels.reshape((h,w))
     pts = [(points[i,1],w-points[i,0]-1) for i in range(len(points))]
     mask = np.zeros((h,w),dtype=np.bool)
     for i in steady_points:
-        mask = np.logical_or(mask,labels==labels[pts[i][0],pts[i][1]])
+        if (pts[i][0]<h) and (pts[i][1]<w) and labels[pts[i][0],pts[i][1]]!=-1:
+            mask = np.logical_or(mask,labels==labels[pts[i][0],pts[i][1]])
     ans = np.where(mask,vmap,np.zeros((h,w)))
     print(np.unique(labels))
     colors = {}
@@ -184,7 +186,7 @@ print("Min:",zmin,"max:",zmax)
 print("Creating pictures")
 vmap = load_npy(os.path.join(folder, "background.npy"))
 background = (vmap-zmin)/(zmax-zmin)
-background = background[:,::-1]
+background = background[:,::-1].copy()
 #surface = estimate_surface(background)
 imsave(os.path.join(out_folder,'background.png'),background)
 for i in range (1,frames+1):
@@ -192,6 +194,7 @@ for i in range (1,frames+1):
     vmap = load_npy(os.path.join(folder,"output" + str(i+start_frame) + ".npy"))
     vmap = (vmap-zmin)/(zmax-zmin)
     vmap = vmap[:,::-1]
+    vmap=background_remove_oldest(vmap,background)
     #vmap = background_remove(vmap,background,surface)
     if isfile(os.path.join(folder,"output" + str(i+start_frame) + ".txt")):
         points = np.loadtxt(os.path.join(folder, "output" + str(i+start_frame) + ".txt"),

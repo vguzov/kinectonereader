@@ -12,7 +12,7 @@
 #include "rply\rply.h"
 #include "cnpy\cnpy.h"
 #define WRITE_TO_BUFFER
-//#define WRITE_NPY
+#define WRITE_NPY
 typedef std::pair<int*, bool*> depthmap;
 static const int        cScreenWidth = 320;
 static const int        cScreenHeight = 240;
@@ -84,7 +84,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		{
 			m_background_vertex_nonskipped_counter[i*cDepthWidth + j] = 0;
 			m_background_vertex_skipped[i*cDepthWidth + j] = false;
-			m_background[i*cDepthWidth + j] = false;
+			m_background[i*cDepthWidth + j] = 0;
 		}
 	}
 	printf("Ready to capture...\n");
@@ -196,7 +196,7 @@ int WriteNpy(const char *filename, depthmap map)
 	const unsigned int shape[] = { cDepthHeight, cDepthWidth };
 	for (int i = 0; i < cDepthHeight*cDepthWidth; i++)
 	{
-		if (!map.second[i])
+		if (map.second[i])
 		{
 			map.first[i] = -1;
 		}
@@ -324,7 +324,6 @@ t_depthstream_state ProcessDepth(t_depthstream_state state, INT64 nTime, const U
 	
 
 	int ind_i = 0, ind_j = 0;
-
 	memcpy(pDepthCopy, pBuffer, size*sizeof(UINT16));
 	if (m_bFloorDetected)
 	{
@@ -347,11 +346,11 @@ t_depthstream_state ProcessDepth(t_depthstream_state state, INT64 nTime, const U
 			//distance comparison in meters 0.02f = 2 cm
 			if (dist < 0.02f)
 			{
-				m_vertex_skipped[i] = false;
+				m_vertex_skipped[i] = true;
 			}
 			else
 			{
-				m_vertex_skipped[i] = true;
+				m_vertex_skipped[i] = false;
 			}
 		}
 	}
@@ -359,19 +358,12 @@ t_depthstream_state ProcessDepth(t_depthstream_state state, INT64 nTime, const U
 
 	while (pBuffer < pBufferEnd)
 	{
-		// discard the portion of the depth that contains only the player index
 		USHORT depth = *pBuffer;
-
-		// To convert to a byte, we're discarding the most-significant
-		// rather than least-significant bits.
-		// We're preserving detail, although the intensity will "wrap."
-		// Values outside the reliable depth range are mapped to 0 (black).
-
-		// Note: Using conditionals in this loop could degrade performance.
-		// Consider using a lookup table instead when writing production code.
 		if ((depth >= nMinDepth) && (depth <= nMaxDepth))
 		{
 			m_depth[ind_i*cDepthWidth + ind_j] = depth;
+			if (!m_bFloorDetected)
+				m_vertex_skipped[ind_i*cDepthWidth + ind_j] = false;
 		}
 		else
 		{

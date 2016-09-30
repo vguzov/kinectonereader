@@ -1,10 +1,10 @@
-﻿Сборка начата 28.09.2016 17:38:42.
+﻿Сборка начата 30.09.2016 16:51:04.
      1>Проект "C:\Users\Vladimir\Documents\Visual Studio 2013\Projects\kinectonereader\windows\sdk2\FirstApprox.vcxproj" в узле 2 (целевые объекты Build).
      1>ClCompile:
          C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /Zi /nologo /W3 /WX- /O2 /Oi /Oy- /GL /D WIN32 /D NDEBUG /D _CONSOLE /D _LIB /D _UNICODE /D UNICODE /Gm- /EHsc /MD /GS /Gy /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Release\\" /Fd"Release\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt FirstApprox.cpp
          FirstApprox.cpp
      1>FirstApprox.cpp(320): warning C4101: hr: неиспользованная локальная переменная
-     1>FirstApprox.cpp(467): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+     1>FirstApprox.cpp(459): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
                  C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\include\stdio.h(211): см. объявление "fopen"
      1>c:\users\vladimir\documents\visual studio 2013\projects\kinectonereader\windows\sdk2\cnpy\cnpy.h(68): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
                  C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\include\stdio.h(211): см. объявление "fopen"
@@ -34,11 +34,10 @@
          Release\rply.obj
          Release\stdafx.obj
          Создание кода
-     1>c:\users\vladimir\documents\visual studio 2013\projects\kinectonereader\windows\sdk2\rply\rply.c(481): warning C4700: использована неинициализированная локальная переменная "ply"
          Создание кода завершено
          FirstApprox.vcxproj -> C:\Users\Vladimir\Documents\Visual Studio 2013\Projects\kinectonereader\windows\sdk2\Release\FirstApprox.exe
      1>Сборка проекта "C:\Users\Vladimir\Documents\Visual Studio 2013\Projects\kinectonereader\windows\sdk2\FirstApprox.vcxproj" завершена (целевые объекты Build).
 
 Сборка успешно завершена.
 
-Затраченное время: 00:00:01.19
+Затраченное время: 00:00:01.59
