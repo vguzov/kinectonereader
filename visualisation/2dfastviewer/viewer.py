@@ -1,3 +1,5 @@
+#! /usr/bin/env python
+
 import numpy as np
 from skimage.io import imsave
 from os.path import isfile
@@ -173,7 +175,8 @@ folder = sys.argv[1]
 out_folder = sys.argv[2]
 if len(sys.argv) >= 4:
     frames = int(sys.argv[3])
-
+if not os.path.exists(out_folder):
+    os.makedirs(out_folder)
 
 #print("Determining minmax")
 #imarr = np.zeros((frames,KINECT_SHAPE[0],KINECT_SHAPE[1]))
