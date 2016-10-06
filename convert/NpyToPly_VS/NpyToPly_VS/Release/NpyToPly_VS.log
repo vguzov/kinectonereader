@@ -1,0 +1,19 @@
+﻿Сборка начата 06.10.2016 19:44:25.
+     1>Проект "C:\Users\Vladimir\Documents\Visual Studio 2013\Projects\kinectonereader\convert\NpyToPly_VS\NpyToPly_VS\NpyToPly_VS.vcxproj" в узле 2 (целевые объекты Build).
+     1>ClCompile:
+         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /Zi /nologo /W3 /WX- /O2 /Oi /Oy- /GL /D WIN32 /D NDEBUG /D _CONSOLE /D _LIB /D _UNICODE /D UNICODE /Gm- /EHsc /MD /GS /Gy /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Release\\" /Fd"Release\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt NpyToPly_VS.cpp
+         NpyToPly_VS.cpp
+     1>NpyToPly_VS.cpp(159): warning C4244: =: преобразование "double" в "UINT16", возможна потеря данных
+       Link:
+         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"C:\Users\Vladimir\Documents\Visual Studio 2013\Projects\kinectonereader\convert\NpyToPly_VS\Release\NpyToPly_VS.exe" /INCREMENTAL:NO /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kinect20.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:\Users\Vladimir\Documents\Visual Studio 2013\Projects\kinectonereader\convert\NpyToPly_VS\Release\NpyToPly_VS.pdb" /SUBSYSTEM:CONSOLE /OPT:REF /OPT:ICF /LTCG /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\Users\Vladimir\Documents\Visual Studio 2013\Projects\kinectonereader\convert\NpyToPly_VS\Release\NpyToPly_VS.lib" /MACHINE:X86 /SAFESEH Release\cnpy.obj
+         Release\NpyToPly_VS.obj
+         Release\rply.obj
+         Создание кода
+     1>c:\users\vladimir\documents\visual studio 2013\projects\kinectonereader\convert\npytoply_vs\npytoply_vs\rply\rply.c(481): warning C4700: использована неинициализированная локальная переменная "ply"
+         Создание кода завершено
+         NpyToPly_VS.vcxproj -> C:\Users\Vladimir\Documents\Visual Studio 2013\Projects\kinectonereader\convert\NpyToPly_VS\Release\NpyToPly_VS.exe
+     1>Сборка проекта "C:\Users\Vladimir\Documents\Visual Studio 2013\Projects\kinectonereader\convert\NpyToPly_VS\NpyToPly_VS\NpyToPly_VS.vcxproj" завершена (целевые объекты Build).
+
+Сборка успешно завершена.
+
+Затраченное время: 00:00:01.15
