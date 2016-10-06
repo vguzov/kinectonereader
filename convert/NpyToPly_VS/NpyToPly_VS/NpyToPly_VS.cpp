@@ -190,7 +190,7 @@ int main(int argc, char *argv[])
 		return 0;
 	Sleep(2000);
 	int frames_skipped = 0;
-	for (int i = 0; i < frames; i++)
+	for (int i = 1; i < frames+1; i++)
 	{
 		if (file_exist(input_folder + "/" + std::to_string(i) + ".npy"))
 		{
@@ -200,7 +200,7 @@ int main(int argc, char *argv[])
 		}
 		else
 			frames_skipped++;
-		std::cout << "\r" << i+1 << " out of " << frames << " frames converted";
+		std::cout << "\r" << i << " out of " << frames << " frames converted";
 		if (frames_skipped>0)
 			std::cout << ", " << frames_skipped << " do not exist";
 		std::cout << std::flush;

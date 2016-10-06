@@ -1,4 +1,4 @@
-﻿Сборка начата 06.10.2016 19:44:25.
+﻿Сборка начата 06.10.2016 20:07:35.
      1>Проект "C:\Users\Vladimir\Documents\Visual Studio 2013\Projects\kinectonereader\convert\NpyToPly_VS\NpyToPly_VS\NpyToPly_VS.vcxproj" в узле 2 (целевые объекты Build).
      1>ClCompile:
          C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /Zi /nologo /W3 /WX- /O2 /Oi /Oy- /GL /D WIN32 /D NDEBUG /D _CONSOLE /D _LIB /D _UNICODE /D UNICODE /Gm- /EHsc /MD /GS /Gy /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Release\\" /Fd"Release\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt NpyToPly_VS.cpp
@@ -16,4 +16,4 @@
 
 Сборка успешно завершена.
 
-Затраченное время: 00:00:01.15
+Затраченное время: 00:00:01.53
