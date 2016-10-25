@@ -11,8 +11,16 @@
 #include "KinectReader.h"
 #include "rply\rply.h"
 #include "cnpy\cnpy.h"
+#include "opencv2\opencv.hpp"
+#include "opencv2\core\core.hpp"
+#include "opencv2\highgui.hpp"
+#include <sys/stat.h>
+#include <cstdio>
+#include <windows.h>
 #define WRITE_TO_BUFFER
 #define WRITE_NPY
+#define NO_PIC
+#define REAL_PLY
 
 #ifndef HINST_THISCOMPONENT
 EXTERN_C IMAGE_DOS_HEADER __ImageBase;
@@ -43,58 +51,260 @@ m_pKinectSensor(NULL),
 m_pCoordinateMapper(NULL),
 m_pMultiSourceFrameReader(NULL),
 m_pDepthCoordinates(NULL),
-m_pOutputRGBX(NULL),
-m_pBackgroundRGBX(NULL),
 m_pColorRGBX(NULL),
 framesCount(100),
 frameIndex(0),
-backgroundRemain(200)
+backgroundCount(200)
 {
+	hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+	backgroundRemain = backgroundCount;
 	LARGE_INTEGER qpf = { 0 };
 	if (QueryPerformanceFrequency(&qpf))
 	{
 		m_fFreq = double(qpf.QuadPart);
 	}
 
-	// create heap storage for composite image pixel data in RGBX format
-	m_pOutputRGBX = new RGBQUAD[cColorWidth * cColorHeight];
-
-	// create heap storage for background image pixel data in RGBX format
-	m_pBackgroundRGBX = new RGBQUAD[cColorWidth * cColorHeight];
-
 	// create heap storage for color pixel data in RGBX format
 	m_pColorRGBX = new RGBQUAD[cColorWidth * cColorHeight];
 
+	m_picturebuffer = new Picture[framesCount];
+	m_jointbuffer = new Skeleton[framesCount];
 	// create heap storage for the coorinate mapping from color to depth
 	m_pDepthCoordinates = new DepthSpacePoint[cColorWidth * cColorHeight];
-
-	m_depthbuffer = new Depthmap[framesCount];
 	m_bkg_counter = new int[cDepthSize];
+	m_depthbuffer = new Depthmap[framesCount];
+	
 	for (int i = 0; i < cDepthSize; i++)
 	{
 		m_bkg_counter[i] = 0;
 		m_background.depth[i] = 0;
 	}
 }
+int WriteNpy(const char *filename, Depthmap map, bool writebody)
+{
+	const unsigned int shape[] = { cDepthHeight, cDepthWidth };
+	for (int i = 0; i < cDepthSize; i++)
+	{
+		if (map.getskipped(writebody)[i])
+		{
+			map.depth[i] = -1;
+		}
+		else
+		{
+			if (map.depth[i] < 0)
+			{
+				map.depth[i] = -map.depth[i];
+			}
+		}
+	}
+	cnpy::npy_save(std::string(filename), map.depth, shape, 2, "w");
+	return 1;
+}
+inline float fillnan(float x)
+{
+	if (x != x)
+		return 0;
+	else
+		return x;
+}
+int WriteRealPly(const char *filename, Pointcloud map)
+{
+	p_ply ply_file;
+	int *countbuf = new int[cDepthHeight*cDepthWidth];
+	int vertex_count = 0, faces_count = 0;
 
+	for (int ind_i = 0; ind_i < cDepthHeight; ind_i++)
+	{
+		for (int ind_j = 0; ind_j < cDepthWidth; ind_j++)
+		{
+			if (!map.second[ind_i*cDepthWidth + ind_j])
+			{
+				vertex_count++;
+				if ((ind_i > 0) && (ind_j > 0) && (!map.second[(ind_i - 1)*cDepthWidth + (ind_j - 1)]))
+				{
+					if (!map.second[ind_i*cDepthWidth + (ind_j - 1)])
+						faces_count++;
+					if (!map.second[(ind_i - 1)*cDepthWidth + ind_j])
+						faces_count++;
+				}
+			}
+		}
+	}
+	ply_file = ply_create(filename,PLY_LITTLE_ENDIAN, NULL, 0, NULL);
+	if (ply_file == NULL)
+		return 0;
+	ply_add_comment(ply_file, "MSU Graphics and Media Lab, 2016");
+	ply_add_element(ply_file, "vertex", vertex_count);
+	ply_add_property(ply_file, "x", PLY_FLOAT32, PLY_CHAR, PLY_CHAR);
+	ply_add_property(ply_file, "y", PLY_FLOAT32, PLY_CHAR, PLY_CHAR);
+	ply_add_property(ply_file, "z", PLY_FLOAT32, PLY_CHAR, PLY_CHAR);
+	ply_add_element(ply_file, "face", faces_count);
+	ply_add_property(ply_file, "vertex_indices", PLY_LIST, PLY_UCHAR, PLY_INT32);
+	ply_write_header(ply_file);
+	vertex_count = 0;
+	for (int i = 0; i < cDepthHeight; i++)
+	{
+		for (int j = 0; j < cDepthWidth; j++)
+		{
+			if (!map.second[i*cDepthWidth + j])
+			{
+				ply_write(ply_file, fillnan(map.first[i*cDepthWidth + j].X));
+				ply_write(ply_file, fillnan(map.first[i*cDepthWidth + j].Y));
+				ply_write(ply_file, fillnan(-map.first[i*cDepthWidth + j].Z));
+				countbuf[i*cDepthWidth + j] = vertex_count++;
+			}
+		}
+	}
+	for (int i = 0; i < cDepthHeight - 1; i++)
+	{
+		for (int j = 0; j < cDepthWidth - 1; j++)
+		{
+			if ((!map.second[(i + 1)*cDepthWidth + j + 1]) && (!map.second[i*cDepthWidth + j]))
+			{
+				if (!map.second[(i + 1)*cDepthWidth + j])
+				{
+					ply_write(ply_file, 3);
+					ply_write(ply_file, countbuf[i*cDepthWidth + j]);
+					ply_write(ply_file, countbuf[(i + 1)*cDepthWidth + j]);
+					ply_write(ply_file, countbuf[(i + 1)*cDepthWidth + j + 1]);
+				}
+				if (!map.second[i*cDepthWidth + j + 1])
+				{
+					ply_write(ply_file, 3);
+					ply_write(ply_file, countbuf[i*cDepthWidth + j]);
+					ply_write(ply_file, countbuf[(i + 1)*cDepthWidth + j + 1]);
+					ply_write(ply_file, countbuf[i*cDepthWidth + j + 1]);
+				}
+			}
+		}
+	}
+	delete[] countbuf;
+	return ply_close(ply_file);
+}
+int WritePly(const char *filename, Depthmap map, bool writebody)
+{
+	p_ply ply_file;
+	int vertex_count = 0, faces_count = 0, vert_id[cDepthSize];
+	for (int ind_i = 0; ind_i < cDepthHeight; ind_i++)
+	{
+		for (int ind_j = 0; ind_j < cDepthWidth; ind_j++)
+		{
+			if (!map.getskipped(writebody)[ind_i*cDepthWidth + ind_j])
+			{
+				vertex_count++;
+				if ((ind_i > 0) && (ind_j > 0) && (!map.getskipped(writebody)[(ind_i - 1)*cDepthWidth + (ind_j - 1)]))
+				{
+					if (!map.getskipped(writebody)[ind_i*cDepthWidth + (ind_j - 1)])
+						faces_count++;
+					if (!map.getskipped(writebody)[(ind_i - 1)*cDepthWidth + ind_j])
+						faces_count++;
+				}
+			}
+		}
+	}
+	ply_file = ply_create(filename,PLY_LITTLE_ENDIAN, NULL, 0, NULL);
+	if (ply_file == NULL)
+		return 0;
+	ply_add_comment(ply_file, "MSU Graphics and Media Lab, 2016");
+	ply_add_element(ply_file, "vertex", vertex_count);
+	ply_add_property(ply_file, "x", PLY_FLOAT32, PLY_CHAR, PLY_CHAR);
+	ply_add_property(ply_file, "y", PLY_FLOAT32, PLY_CHAR, PLY_CHAR);
+	ply_add_property(ply_file, "z", PLY_FLOAT32, PLY_CHAR, PLY_CHAR);
+	ply_add_element(ply_file, "face", faces_count);
+	ply_add_property(ply_file, "vertex_indices", PLY_LIST, PLY_UCHAR, PLY_INT32);
+	ply_write_header(ply_file);
+	vertex_count = 0;
+	for (int i = 0; i < cDepthHeight; i++)
+	{
+		for (int j = 0; j < cDepthWidth; j++)
+		{
+			if (!map.getskipped(writebody)[i*cDepthWidth + j])
+			{
+				ply_write(ply_file, j);
+				ply_write(ply_file, -i);
+				ply_write(ply_file, -map.depth[i*cDepthWidth + j]);
+				vert_id[i*cDepthWidth + j] = vertex_count++;
+			}
+		}
+	}
+	for (int i = 0; i < cDepthHeight - 1; i++)
+	{
+		for (int j = 0; j < cDepthWidth - 1; j++)
+		{
+			if ((!map.getskipped(writebody)[(i + 1)*cDepthWidth + j + 1]) && (!map.getskipped(writebody)[i*cDepthWidth + j]))
+			{
+				if (!map.getskipped(writebody)[(i + 1)*cDepthWidth + j])
+				{
+					ply_write(ply_file, 3);
+					ply_write(ply_file, vert_id[i*cDepthWidth + j]);
+					ply_write(ply_file, vert_id[(i + 1)*cDepthWidth + j]);
+					ply_write(ply_file, vert_id[(i + 1)*cDepthWidth + j + 1]);
+				}
+				if (!map.getskipped(writebody)[i*cDepthWidth + j + 1])
+				{
+					ply_write(ply_file, 3);
+					ply_write(ply_file, vert_id[i*cDepthWidth + j]);
+					ply_write(ply_file, vert_id[(i + 1)*cDepthWidth + j + 1]);
+					ply_write(ply_file, vert_id[i*cDepthWidth + j + 1]);
+				}
+			}
+		}
+	}
+	return ply_close(ply_file);
+}
+Pointcloud CCoordinateMappingBasics::ConvertToPointcloud(Depthmap dmap, bool onlybody)
+{
+	CameraSpacePoint *camerabuf = new CameraSpacePoint[cDepthSize];
+	bool *skipped = new bool[cDepthSize];
+	UINT16 *depthbuf = new UINT16[cDepthSize];
+	for (int i = 0; i < cDepthSize; i++)
+	{
+		skipped[i] = dmap.getskipped(onlybody);
+		depthbuf[i] = static_cast<UINT16>(dmap.depth[i]);
+	}
+	m_pCoordinateMapper->MapDepthFrameToCameraSpace(cDepthHeight*cDepthWidth, depthbuf, cDepthHeight*cDepthWidth, camerabuf);
+	delete[] depthbuf;
+	return Pointcloud(camerabuf, skipped);
+}
+void CCoordinateMappingBasics::FlushBuffer()
+{
+	cv::Mat pic_matrix(cColorHeight, cColorWidth, CV_8UC3);
+	std::string filename_temp;
+	printf("\n");
+	for (int frame = 0; frame < framesCount; frame++)
+	{
+		printf("Flushing data to drive... %d/%d \r", frame + 1, framesCount);
+		filename_temp = std::string("./output/") + std::to_string(frame);
+#ifndef NO_PIC
+		for (int i = 0; i < cColorSize; i++)
+		{
+			pic_matrix.data[i * 3] = m_picturebuffer[frame].data[i].rgbBlue;
+			pic_matrix.data[i * 3 + 1] = m_picturebuffer[frame].data[i].rgbGreen;
+			pic_matrix.data[i * 3 + 2] = m_picturebuffer[frame].data[i].rgbRed;
+		}
+		cv::imwrite(filename_temp+".png", pic_matrix);
+#endif
+#ifdef WRITE_NPY
+		WriteNpy((filename_temp + ".npy").c_str(), m_depthbuffer[frame], true);
+#else
+#ifdef REAL_PLY
+		Pointcloud cloud = ConvertToPointcloud(m_depthbuffer[frame], true);
+		WriteRealPly((filename_temp + ".ply").c_str(), cloud);
+		delete[] cloud.first;
+		delete[] cloud.second;
+#else
+		WritePly((filename_temp + ".ply").c_str(), m_depthbuffer[frame], true);
+#endif
+#endif
+		HandleJoints(filename_temp + ".txt", m_jointbuffer[frame].joints, JointType_Count);
+	}
 
+}
 /// <summary>
 /// Destructor
 /// </summary>
 CCoordinateMappingBasics::~CCoordinateMappingBasics()
 {
-
-	if (m_pOutputRGBX)
-	{
-		delete[] m_pOutputRGBX;
-		m_pOutputRGBX = NULL;
-	}
-
-	if (m_pBackgroundRGBX)
-	{
-		delete[] m_pBackgroundRGBX;
-		m_pBackgroundRGBX = NULL;
-	}
 
 	if (m_pColorRGBX)
 	{
@@ -110,6 +320,7 @@ CCoordinateMappingBasics::~CCoordinateMappingBasics()
 
 	delete[] m_depthbuffer;
 	delete[] m_bkg_counter;
+	delete[] m_picturebuffer;
 
 	// done with frame reader
 	SafeRelease(m_pMultiSourceFrameReader);
@@ -141,18 +352,31 @@ int CCoordinateMappingBasics::Run()
 		state = Update(state);
 		if (state == DS_BACKGROUND_COMPLETE)
 		{
+			SetConsoleTextAttribute(hConsole, colors[1]);
+			printf("Background captured, waiting for your response\n");
 			getchar();
-			for (int seconds = 10; seconds >= 1; seconds--)
+			SetConsoleTextAttribute(hConsole, colors[2]);
+			for (int seconds = 5; seconds >= 1; seconds--)
 			{
 				printf("Starting in %d... \r", seconds);
 				Sleep(1000);
 			}
-
+			printf("\n");
+			state = DS_REALTIME_CAPTURING;
+			SetConsoleTextAttribute(hConsole, colors[3]);
 		}
 	}
+	SetConsoleTextAttribute(hConsole, colors[4]);
+	FlushBuffer();
+	
 	return 0;
 }
 
+void CCoordinateMappingBasics::WriteToBuffer(Depthmap *dm, RGBQUAD *pic, int framenum)
+{
+	m_depthbuffer[framenum].copyfrom(dm);
+	m_picturebuffer[framenum].copyfrom(pic);
+}
 /// <summary>
 /// Main processing function
 /// </summary>
@@ -348,16 +572,6 @@ t_depthstream_state CCoordinateMappingBasics::Update(t_depthstream_state state)
 
 		if (SUCCEEDED(hr))
 		{
-			state = ProcessFrame(state,nDepthTime, pDepthBuffer, nDepthWidth, nDepthHeight,
-				pColorBuffer, nColorWidth, nColorHeight,
-				pBodyIndexBuffer, nBodyIndexWidth, nBodyIndexHeight, 
-				nDepthMinReliableDistance,nDepthMaxDistance);
-			if (frameIndex == framesCount)
-				return DS_COMPLETE;
-			else if (state == DS_REALTIME_CAPTURING) frameIndex++;
-		}
-		if (SUCCEEDED(hr))
-		{
 			INT64 nTime = 0;
 
 			hr = pBodyFrame->get_RelativeTime(&nTime);
@@ -380,16 +594,23 @@ t_depthstream_state CCoordinateMappingBasics::Update(t_depthstream_state state)
 				SafeRelease(ppBodies[i]);
 			}
 		}
-		SafeRelease(pBodyFrame);
+		if (SUCCEEDED(hr))
+		{
+			state = ProcessFrame(state, nDepthTime, pDepthBuffer, nDepthWidth, nDepthHeight,
+				pColorBuffer, nColorWidth, nColorHeight,
+				pBodyIndexBuffer, nBodyIndexWidth, nBodyIndexHeight,
+				nDepthMinReliableDistance, nDepthMaxDistance);
+		}
 		SafeRelease(pDepthFrameDescription);
 		SafeRelease(pColorFrameDescription);
 		SafeRelease(pBodyIndexFrameDescription);
 	}
-
+	SafeRelease(pBodyFrame);
 	SafeRelease(pDepthFrame);
 	SafeRelease(pColorFrame);
 	SafeRelease(pBodyIndexFrame);
 	SafeRelease(pMultiSourceFrame);
+	return state;
 }
 
 /// <summary>
@@ -420,7 +641,7 @@ HRESULT CCoordinateMappingBasics::InitializeDefaultSensor()
 		if (SUCCEEDED(hr))
 		{
 			hr = m_pKinectSensor->OpenMultiSourceFrameReader(
-				FrameSourceTypes::FrameSourceTypes_Depth | FrameSourceTypes::FrameSourceTypes_Color | FrameSourceTypes::FrameSourceTypes_BodyIndex,
+				FrameSourceTypes::FrameSourceTypes_Depth | FrameSourceTypes::FrameSourceTypes_Color | FrameSourceTypes::FrameSourceTypes_BodyIndex | FrameSourceTypes::FrameSourceTypes_Body,
 				&m_pMultiSourceFrameReader);
 		}
 	}
@@ -482,7 +703,7 @@ t_depthstream_state CCoordinateMappingBasics::ProcessFrame(t_depthstream_state s
 	//m_nFramesSinceUpdate = 0;
 
 	// Make sure we've received valid data
-	if (m_pCoordinateMapper && m_pDepthCoordinates && m_pOutputRGBX &&
+	if (m_pCoordinateMapper && m_pDepthCoordinates &&
 		pDepthBuffer && (nDepthWidth == cDepthWidth) && (nDepthHeight == cDepthHeight) &&
 		pColorBuffer && (nColorWidth == cColorWidth) && (nColorHeight == cColorHeight) &&
 		pBodyIndexBuffer && (nBodyIndexWidth == cDepthWidth) && (nBodyIndexHeight == cDepthHeight))
@@ -511,8 +732,10 @@ t_depthstream_state CCoordinateMappingBasics::ProcessFrame(t_depthstream_state s
 				m_depthmap.body_skipped[i] = true;
 			}
 		}
-		if (state == DS_BACKGROUND_CAPTURING)
+		switch (state)
 		{
+		case DS_BACKGROUND_CAPTURING:
+			printf("Capturing background... %d/%d \r", backgroundCount-backgroundRemain, backgroundCount);
 			for (int i = 0; i < cDepthSize; i++)
 			{
 				if (!m_depthmap.skipped[i])
@@ -536,11 +759,25 @@ t_depthstream_state CCoordinateMappingBasics::ProcessFrame(t_depthstream_state s
 						m_background.skipped[i] = true;
 					}
 				}
+#ifdef WRITE_NPY
+				WriteNpy("./output/background.npy", m_background, false);
+#else
+				WritePly("./output/background.ply", m_background, false);
+#endif
 			}
+			break;
+		case DS_REALTIME_CAPTURING:
+#ifdef WRITE_TO_BUFFER
+			WriteToBuffer(&m_depthmap, m_pColorRGBX, frameIndex);
+#endif
+			if (++frameIndex == framesCount)
+				state = DS_COMPLETE;
+			printf("Writing frame %d/%d \r", frameIndex, framesCount);
+			break;
 
 		}
-
 	}
+	return state;
 }
 
 /// <summary>
@@ -631,14 +868,28 @@ Point CCoordinateMappingBasics::BodyToScreen(const CameraSpacePoint& bodyPoint, 
 
 	return Point(screenPointX, screenPointY);
 }
-void CCoordinateMappingBasics::HandleJoints(const Point *m_Points, int points_count)
+inline bool exists_test(const std::string& name) {
+	struct stat buffer;
+	return (stat(name.c_str(), &buffer) == 0);
+}
+void CCoordinateMappingBasics::HandleJoints(const std::string &filename, Point *m_Points, int points_count)
 {
-	FILE* skel_file = fopen((std::string(".\\output\\output") + std::to_string(frameIndex) + std::string(".txt")).c_str(), "w");
-	for (int i = 0; i < points_count; ++i)
+	if (m_Points)
 	{
-		fprintf(skel_file, "Point %d: %.2f %.2f\n", i, m_Points[i].first, m_Points[i].second);
+		FILE* skel_file = fopen(filename.c_str(), "w");
+		for (int i = 0; i < points_count; ++i)
+		{
+			fprintf(skel_file, "Point %d: %.2f %.2f\n", i, m_Points[i].first, m_Points[i].second);
+		}
+		fclose(skel_file);
 	}
-	fclose(skel_file);
+	else
+	{
+		if (exists_test(filename))
+		{
+			std::remove(filename.c_str());
+		}
+	}
 }
 void CCoordinateMappingBasics::ProcessSkeleton(INT64 nTime, int nBodyCount, IBody** ppBodies)
 {
@@ -666,8 +917,11 @@ void CCoordinateMappingBasics::ProcessSkeleton(INT64 nTime, int nBodyCount, IBod
 					{
 						jointPoints[j] = BodyToScreen(joints[j].Position, width, height);
 					}
-
+#ifdef WRITE_TO_BUFFER
+					m_jointbuffer[frameIndex].copyfrom(jointPoints);
+#else
 					HandleJoints(jointPoints, JointType_Count);
+#endif
 					break;
 				}
 			}

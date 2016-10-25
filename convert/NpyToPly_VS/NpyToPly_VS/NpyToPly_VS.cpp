@@ -143,12 +143,11 @@ int WritePly(const char *filename, pointcloud map)
 	delete[] countbuf;
 	return ply_close(ply_file);
 }
-void npy_to_cloud(cnpy::NpyArray arr, pointcloud map, UINT16 *depthbuf)
+void npy_to_cloud(cnpy::NpyArray arr, pointcloud map, UINT16 *depthbuf, bool normalised = false)
 {
-	double *arrdata = reinterpret_cast<double *>(arr.data);
 	for (int i = 0; i < cDepthHeight*cDepthWidth; i++)
 	{
-		if (arrdata[i] < 0.1)
+		if (normalised && (reinterpret_cast<double *>(arr.data)[i] < 0.1) || (!normalised) && (reinterpret_cast<int *>(arr.data)[i]<0))
 		{
 			map.second[i] = true;
 			depthbuf[i] = 1000;
@@ -156,7 +155,7 @@ void npy_to_cloud(cnpy::NpyArray arr, pointcloud map, UINT16 *depthbuf)
 		else
 		{
 			map.second[i] = false;
-			depthbuf[i] = arrdata[i] * 5000 + 1000;
+			depthbuf[i] = normalised ? (reinterpret_cast<double *>(arr.data)[i] * 5000 + 1000) : reinterpret_cast<int *>(arr.data)[i];
 		}
 	}
 	m_pCoordinateMapper->MapDepthFrameToCameraSpace(cDepthHeight*cDepthWidth, depthbuf, cDepthHeight*cDepthWidth, map.first);
@@ -173,9 +172,13 @@ int main(int argc, char *argv[])
 		return 0;
 	}
 	int frames = 100;
+	bool normalised = false;
 	if (argc > 3)
 	{
-		frames = atoi(argv[3]);
+		if (argv[3][0] == '-')
+			normalised = true;
+		else
+			frames = atoi(argv[3]);
 	}
 	std::string input_folder(argv[1]), output_folder(argv[2]);
 	cnpy::NpyArray arr;
@@ -195,7 +198,7 @@ int main(int argc, char *argv[])
 		if (file_exist(input_folder + "/" + std::to_string(i) + ".npy"))
 		{
 			arr = cnpy::npy_load(input_folder + "/" + std::to_string(i) + ".npy");
-			npy_to_cloud(arr, cloud, depthbuf);
+			npy_to_cloud(arr, cloud, depthbuf, normalised);
 			WritePly((output_folder + "/" + std::to_string(i) + ".ply").c_str(), cloud);
 		}
 		else

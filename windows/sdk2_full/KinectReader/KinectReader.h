@@ -7,9 +7,17 @@
 #pragma once
 #include <vector>
 #include <Kinect.h>
+#include <windows.h>
 static const int        cDepthWidth = 512;
 static const int        cDepthHeight = 424;
+static const int        cColorWidth = 1920;
+static const int        cColorHeight = 1080;
 static const int        cDepthSize = cDepthWidth*cDepthHeight;
+static const int        cColorSize = cColorWidth*cColorHeight;
+const WORD colors[] =
+{
+	0x0F, 0x0A, 0x0C, 0xCF, 0x9F
+};
 enum t_depthstream_state {
 	DS_BACKGROUND_CAPTURING,
 	DS_BACKGROUND_COMPLETE,
@@ -18,22 +26,112 @@ enum t_depthstream_state {
 	DS_COMPLETE
 };
 typedef std::pair<float, float> Point;
+typedef std::pair<CameraSpacePoint*, bool*> Pointcloud;
 struct Depthmap
 {
 	int *depth;
 	bool *skipped;
 	bool *body_skipped;
+	int *link_count;
 	Depthmap()
 	{
+		link_count = new int(1);
 		depth = new int[cDepthSize];
 		skipped = new bool[cDepthSize];
 		body_skipped = new bool[cDepthSize];
 	}
+	Depthmap(const Depthmap &map)
+	{
+		*(map.link_count) += 1;
+		link_count = map.link_count;
+		depth = map.depth;
+		skipped = map.skipped;
+		body_skipped = map.body_skipped;
+	}
 	~Depthmap()
 	{
-		delete[] depth;
-		delete[] skipped;
-		delete[] body_skipped;
+		*link_count -= 1;
+		if (*link_count == 0)
+		{
+			delete[] depth;
+			delete[] skipped;
+			delete[] body_skipped;
+			delete link_count;
+		}
+	}
+	const bool *getskipped(bool isbody)
+	{
+		return isbody ? body_skipped : skipped;
+	}
+	void copyfrom(Depthmap *dmptr)
+	{
+		memcpy(depth, dmptr->depth, cDepthSize*sizeof(int));
+		memcpy(skipped, dmptr->skipped, cDepthSize*sizeof(bool));
+		memcpy(body_skipped, dmptr->body_skipped, cDepthSize*sizeof(bool));
+	}
+};
+struct Picture
+{
+	RGBQUAD *data;
+	int *link_count;
+	Picture()
+	{
+		data = new RGBQUAD[cColorSize];
+		link_count = new int(1);
+	}
+	Picture(const Picture &pic)
+	{
+		*(pic.link_count) += 1;
+		link_count = pic.link_count;
+		data = pic.data;
+	}
+	~Picture()
+	{
+		*link_count -= 1;
+		if (*link_count == 0)
+		{
+			delete[] data;
+			delete link_count;
+		}
+	}
+	void copyfrom(RGBQUAD *dataptr)
+	{
+		memcpy(data, dataptr, cColorSize*sizeof(RGBQUAD));
+	}
+};
+struct Skeleton
+{
+	Point *joints;
+	int *link_count;
+	Skeleton()
+	{
+		joints = NULL;
+		link_count = new int(1);
+	}
+	Skeleton(const Skeleton &sk)
+	{
+		*(sk.link_count) += 1;
+		link_count = sk.link_count;
+		joints = sk.joints;
+	}
+	void copyfrom(Point *data)
+	{
+		if (!joints)
+			joints = new Point[JointType_Count];
+		for (int i = 0; i < JointType_Count; i++)
+		{
+			joints[i] = data[i];
+		}
+	}
+	~Skeleton()
+	{
+		*link_count -= 1;
+		if (*link_count == 0)
+		{
+			if (joints)
+				delete[] joints;
+			delete link_count;
+		}
 	}
 };
 
@@ -41,12 +139,12 @@ class CCoordinateMappingBasics
 {
 public:
 	
+	HANDLE  hConsole;
 
-	static const int        cColorWidth = 1920;
-	static const int        cColorHeight = 1080;
 	int                     framesCount;
 	int                     frameIndex;
 	int                     backgroundRemain;
+	int                     backgroundCount;
     /// <summary>
     /// Constructor
     /// </summary>
@@ -84,10 +182,15 @@ private:
     IMultiSourceFrameReader*m_pMultiSourceFrameReader;
 
     // Direct2D
-    RGBQUAD*                m_pOutputRGBX; 
-    RGBQUAD*                m_pBackgroundRGBX; 
     RGBQUAD*                m_pColorRGBX;
+	Picture*                m_picturebuffer;
 
+	Skeleton*                  m_jointbuffer;
+
+
+	void WriteToBuffer(Depthmap *dm, RGBQUAD *pic, int framenum);
+	void FlushBuffer();
+	Pointcloud ConvertToPointcloud(Depthmap dmap, bool onlybody);
     /// <summary>
     /// Main processing function
     /// </summary>
@@ -120,7 +223,7 @@ private:
 
 	void ProcessSkeleton(INT64 nTime, int nBodyCount, IBody** ppBodies);
 	Point BodyToScreen(const CameraSpacePoint& bodyPoint, int width, int height);
-	void HandleJoints(const Point *m_Points, int points_count);
+	void HandleJoints(const std::string &filename, Point *m_Points, int points_count);
     /// <summary>
     /// Set the status bar message
     /// </summary>
