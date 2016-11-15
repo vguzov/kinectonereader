@@ -151,13 +151,13 @@ background = (vmap - zmin) / (zmax - zmin)
 background = background.copy()
 imsave(os.path.join(arguments['output_folder'], 'background.png'), mirror(background)[0])
 for i in range(1, arguments['frames'] + 1):
-    vmap = load_npy(os.path.join(arguments['input_folder'], "" + str(i + arguments['start_frame']) + ".npy"))
+    vmap = load_npy(os.path.join(arguments['input_folder'], "output" + str(i + arguments['start_frame']) + ".npy"))
     vmap = (vmap - zmin) / (zmax - zmin)
-    #vmap = background_remove_oldest(vmap, background)
-    if isfile(os.path.join(arguments['input_folder'], "" + str(i + arguments['start_frame']) + ".txt")):
-        points = np.loadtxt(os.path.join(arguments['input_folder'], "" + str(i + arguments['start_frame']) + ".txt"),
+    vmap = background_remove_oldest(vmap, background)
+    if isfile(os.path.join(arguments['input_folder'], "output" + str(i + arguments['start_frame']) + ".txt")):
+        points = np.loadtxt(os.path.join(arguments['input_folder'], "output" + str(i + arguments['start_frame']) + ".txt"),
                             usecols=(2, 3), comments=';', converters={2: txtconvert, 3: txtconvert})
-        #vmap = background_remove(vmap, points, i)
+        vmap = background_remove(vmap, points, i)
     else:
         points = None
     vmap,points = mirror(vmap,points)
