@@ -1,40 +1,32 @@
-﻿Сборка начата 25.10.2016 17:57:23.
-     1>Проект "C:\Users\Vladimir\Documents\Visual Studio 2013\Projects\kinectonereader\windows\sdk2_full\KinectReader\KinectReader.vcxproj" в узле 2 (целевые объекты Build).
-     1>ClCompile:
-         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /IC:\opencv\vc12\include /ZI /nologo /W3 /WX- /Od /Oy- /D WIN32 /D _DEBUG /D _CONSOLE /D _LIB /D _UNICODE /D UNICODE /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Debug\\" /Fd"Debug\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt KinectReader.cpp
-         KinectReader.cpp
-     1>c:\users\vladimir\documents\visual studio 2013\projects\kinectonereader\windows\sdk2_full\kinectreader\kinectreader.cpp(773): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
-                 c:\program files (x86)\microsoft visual studio 12.0\vc\include\stdio.h(211): см. объявление "fopen"
-     1>c:\users\vladimir\documents\visual studio 2013\projects\kinectonereader\windows\sdk2_full\kinectreader\cnpy\cnpy.h(68): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
-                 c:\program files (x86)\microsoft visual studio 12.0\vc\include\stdio.h(211): см. объявление "fopen"
-                 c:\users\vladimir\documents\visual studio 2013\projects\kinectonereader\windows\sdk2_full\kinectreader\kinectreader.cpp(98): см. ссылку на создание экземпляров функции шаблон при компиляции "void cnpy::npy_save<int>(std::string,const T *,const unsigned int *,const unsigned int,std::string)"
-                 with
-                 [
-                     T=int
-                 ]
-     1>c:\users\vladimir\documents\visual studio 2013\projects\kinectonereader\windows\sdk2_full\kinectreader\cnpy\cnpy.h(87): warning C4018: <: несоответствие типов со знаком и без знака
-     1>c:\users\vladimir\documents\visual studio 2013\projects\kinectonereader\windows\sdk2_full\kinectreader\cnpy\cnpy.h(103): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
-                 c:\program files (x86)\microsoft visual studio 12.0\vc\include\stdio.h(211): см. объявление "fopen"
-     1>c:\users\vladimir\documents\visual studio 2013\projects\kinectonereader\windows\sdk2_full\kinectreader\cnpy\cnpy.h(109): warning C4018: <: несоответствие типов со знаком и без знака
-     1>c:\users\vladimir\documents\visual studio 2013\projects\kinectonereader\windows\sdk2_full\kinectreader\cnpy\cnpy.h(215): warning C4018: <: несоответствие типов со знаком и без знака
-                 c:\users\vladimir\documents\visual studio 2013\projects\kinectonereader\windows\sdk2_full\kinectreader\cnpy\cnpy.h(96): см. ссылку на создание экземпляров функции шаблон при компиляции "std::vector<char,std::allocator<char>> cnpy::create_npy_header<T>(const T *,const unsigned int *,const unsigned int)"
-                 with
-                 [
-                     T=int
-                 ]
-                 c:\users\vladimir\documents\visual studio 2013\projects\kinectonereader\windows\sdk2_full\kinectreader\kinectreader.cpp(98): см. ссылку на создание экземпляров функции шаблон при компиляции "void cnpy::npy_save<int>(std::string,const T *,const unsigned int *,const unsigned int,std::string)"
-                 with
-                 [
-                     T=int
-                 ]
-       Link:
-         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"C:\Users\Vladimir\Documents\Visual Studio 2013\Projects\kinectonereader\windows\sdk2_full\KinectReader\Debug\KinectReader.exe" /INCREMENTAL /NOLOGO /LIBPATH:C:\opencv\vc12\lib opencv_core2413d.lib opencv_highgui2413d.lib windowscodecs.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kinect20.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:\Users\Vladimir\Documents\Visual Studio 2013\Projects\kinectonereader\windows\sdk2_full\KinectReader\Debug\KinectReader.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\Users\Vladimir\Documents\Visual Studio 2013\Projects\kinectonereader\windows\sdk2_full\KinectReader\Debug\KinectReader.lib" /MACHINE:X86 Debug\cnpy.obj
-         Debug\KinectReader.obj
-         Debug\rply.obj
-         Debug\stdafx.obj
-         KinectReader.vcxproj -> C:\Users\Vladimir\Documents\Visual Studio 2013\Projects\kinectonereader\windows\sdk2_full\KinectReader\Debug\KinectReader.exe
-     1>Сборка проекта "C:\Users\Vladimir\Documents\Visual Studio 2013\Projects\kinectonereader\windows\sdk2_full\KinectReader\KinectReader.vcxproj" завершена (целевые объекты Build).
-
-Сборка успешно завершена.
-
-Затраченное время: 00:00:01.23
+﻿  KinectReader.cpp
+c:\users\vladimir\cv\kinectonereader\windows\sdk2_full\kinectreader\kinectreader.cpp(262): warning C4800: const bool *: принудительно задано логическое значение "true" или "false" (предупреждение о производительности)
+c:\users\vladimir\cv\kinectonereader\windows\sdk2_full\kinectreader\kinectreader.cpp(879): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\stdio.h(205): note:  см. объявление "fopen"
+c:\users\vladimir\cv\kinectonereader\windows\sdk2_full\kinectreader\cnpy\cnpy.h(87): warning C4018: <: несоответствие типов со знаком и без знака
+  c:\users\vladimir\cv\kinectonereader\windows\sdk2_full\kinectreader\kinectreader.cpp(100): note: см. ссылку на создание экземпляров функции шаблон при компиляции "void cnpy::npy_save<int>(std::string,const T *,const unsigned int *,const unsigned int,std::string)"
+          with
+          [
+              T=int
+          ]
+c:\users\vladimir\cv\kinectonereader\windows\sdk2_full\kinectreader\cnpy\cnpy.h(109): warning C4018: <: несоответствие типов со знаком и без знака
+c:\users\vladimir\cv\kinectonereader\windows\sdk2_full\kinectreader\cnpy\cnpy.h(68): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\stdio.h(205): note:  см. объявление "fopen"
+c:\users\vladimir\cv\kinectonereader\windows\sdk2_full\kinectreader\cnpy\cnpy.h(103): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\stdio.h(205): note:  см. объявление "fopen"
+c:\users\vladimir\cv\kinectonereader\windows\sdk2_full\kinectreader\cnpy\cnpy.h(215): warning C4018: <: несоответствие типов со знаком и без знака
+  c:\users\vladimir\cv\kinectonereader\windows\sdk2_full\kinectreader\cnpy\cnpy.h(96): note: см. ссылку на создание экземпляров функции шаблон при компиляции "std::vector<char,std::allocator<char>> cnpy::create_npy_header<T>(const T *,const unsigned int *,const unsigned int)"
+          with
+          [
+              T=int
+          ]
+  c:\users\vladimir\cv\kinectonereader\windows\sdk2_full\kinectreader\kinectreader.cpp(100): note: см. ссылку на создание экземпляров функции шаблон при компиляции "void cnpy::npy_save<int>(std::string,const T *,const unsigned int *,const unsigned int,std::string)"
+          with
+          [
+              T=int
+          ]
+  Создание кода...
+  Компиляция...
+  stdafx.cpp
+  Создание кода...
+  KinectReader.vcxproj -> C:\Users\Vladimir\cv\kinectonereader\windows\sdk2_full\KinectReader\Debug\KinectReader.exe
+  KinectReader.vcxproj -> C:\Users\Vladimir\cv\kinectonereader\windows\sdk2_full\KinectReader\Debug\KinectReader.pdb (Full PDB)

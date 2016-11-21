@@ -25,7 +25,7 @@ enum t_depthstream_state {
 	DS_REALTIME_STOPPED,
 	DS_COMPLETE
 };
-typedef std::tuple<float, float, float> Point;
+typedef std::pair<float, float> Point;
 typedef std::pair<CameraSpacePoint*, bool*> Pointcloud;
 struct Depthmap
 {
@@ -233,7 +233,7 @@ private:
 
 	void ProcessSkeleton(INT64 nTime, int nBodyCount, IBody** ppBodies);
 	Point BodyToScreen(const CameraSpacePoint& bodyPoint, int width, int height);
-	void HandleJoints(const std::string &filename, Point *m_Points, int points_count);
+	void HandleJoints(const std::string &filename, Point *m_Points, CameraSpacePoint *m_CameraPoints, int points_count);
     /// <summary>
     /// Set the status bar message
     /// </summary>

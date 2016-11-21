@@ -19,10 +19,6 @@
 
 #include <Shlobj.h>
 
-// Direct2D Header Files
-#include <d2d1.h>
-
-#pragma comment ( lib, "d2d1.lib" )
 
 #ifdef _UNICODE
 #if defined _M_IX86

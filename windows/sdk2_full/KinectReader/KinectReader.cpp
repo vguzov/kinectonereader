@@ -880,7 +880,7 @@ void CCoordinateMappingBasics::HandleJoints(const std::string &filename, Point *
 		for (int i = 0; i < points_count; ++i)
 		{
 			fprintf(skel_file, "Depth %d: %.2f %.2f Camera %d: %.4f %.4f %.4f", i, m_Points[i].first, m_Points[i].second,
-			i, m_CameraPoints[i].x, m_CameraPoints[i].y, m_CameraPoints[i].z);
+			i, m_CameraPoints[i].X, m_CameraPoints[i].Y, m_CameraPoints[i].Z);
 			
 		}
 		fclose(skel_file);
