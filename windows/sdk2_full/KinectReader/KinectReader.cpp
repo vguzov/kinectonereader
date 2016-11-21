@@ -352,6 +352,7 @@ int CCoordinateMappingBasics::Run()
 		state = Update(state);
 		if (state == DS_BACKGROUND_COMPLETE)
 		{
+			//CreateDirectory(L"output", NULL);
 			SetConsoleTextAttribute(hConsole, colors[1]);
 			printf("Background captured, waiting for your response\n");
 			getchar();
@@ -879,7 +880,7 @@ void CCoordinateMappingBasics::HandleJoints(const std::string &filename, Point *
 		FILE* skel_file = fopen(filename.c_str(), "w");
 		for (int i = 0; i < points_count; ++i)
 		{
-			fprintf(skel_file, "Depth %d: %.2f %.2f Camera %d: %.4f %.4f %.4f", i, m_Points[i].first, m_Points[i].second,
+			fprintf(skel_file, "Depth %d: %.2f %.2f Camera %d: %f %f %f\n", i, m_Points[i].first, m_Points[i].second,
 			i, m_CameraPoints[i].X, m_CameraPoints[i].Y, m_CameraPoints[i].Z);
 			
 		}
