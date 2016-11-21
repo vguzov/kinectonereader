@@ -296,7 +296,7 @@ void CCoordinateMappingBasics::FlushBuffer()
 		WritePly((filename_temp + ".ply").c_str(), m_depthbuffer[frame], true);
 #endif
 #endif
-		HandleJoints(filename_temp + ".txt", m_jointbuffer[frame].joints, JointType_Count);
+		HandleJoints(filename_temp + ".txt", m_jointbuffer[frame].depth_joints, m_jointbuffer[frame].camera_joints, JointType_Count);
 	}
 
 }
@@ -872,14 +872,16 @@ inline bool exists_test(const std::string& name) {
 	struct stat buffer;
 	return (stat(name.c_str(), &buffer) == 0);
 }
-void CCoordinateMappingBasics::HandleJoints(const std::string &filename, Point *m_Points, int points_count)
+void CCoordinateMappingBasics::HandleJoints(const std::string &filename, Point *m_Points, CameraSpacePoint *m_CameraPoints, int points_count)
 {
 	if (m_Points)
 	{
 		FILE* skel_file = fopen(filename.c_str(), "w");
 		for (int i = 0; i < points_count; ++i)
 		{
-			fprintf(skel_file, "Point %d: %.2f %.2f\n", i, m_Points[i].first, m_Points[i].second);
+			fprintf(skel_file, "Depth %d: %.2f %.2f Camera %d: %.4f %.4f %.4f", i, m_Points[i].first, m_Points[i].second,
+			i, m_CameraPoints[i].x, m_CameraPoints[i].y, m_CameraPoints[i].z);
+			
 		}
 		fclose(skel_file);
 	}
@@ -909,6 +911,7 @@ void CCoordinateMappingBasics::ProcessSkeleton(INT64 nTime, int nBodyCount, IBod
 			{
 				Joint joints[JointType_Count];
 				Point jointPoints[JointType_Count];
+				CameraSpacePoint jointPointsCamera[JointType_Count];
 
 				hr = pBody->GetJoints(_countof(joints), joints);
 				if (SUCCEEDED(hr))
@@ -916,11 +919,12 @@ void CCoordinateMappingBasics::ProcessSkeleton(INT64 nTime, int nBodyCount, IBod
 					for (int j = 0; j < _countof(joints); ++j)
 					{
 						jointPoints[j] = BodyToScreen(joints[j].Position, width, height);
+						jointPointsCamera[j] = joints[j].Position;
 					}
 #ifdef WRITE_TO_BUFFER
-					m_jointbuffer[frameIndex].copyfrom(jointPoints);
+					m_jointbuffer[frameIndex].copyfrom(jointPoints, jointPointsCamera);
 #else
-					HandleJoints(jointPoints, JointType_Count);
+					HandleJoints(std::to_string(framesCount)+".txt",jointPoints, jointPointsCamera, JointType_Count);
 #endif
 					break;
 				}

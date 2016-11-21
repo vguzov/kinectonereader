@@ -25,7 +25,7 @@ enum t_depthstream_state {
 	DS_REALTIME_STOPPED,
 	DS_COMPLETE
 };
-typedef std::pair<float, float> Point;
+typedef std::tuple<float, float, float> Point;
 typedef std::pair<CameraSpacePoint*, bool*> Pointcloud;
 struct Depthmap
 {
@@ -101,26 +101,33 @@ struct Picture
 };
 struct Skeleton
 {
-	Point *joints;
+	Point *depth_joints;
+	CameraSpacePoint *camera_joints;
 	int *link_count;
 	Skeleton()
 	{
-		joints = NULL;
+		depth_joints = NULL;
+		camera_joints = NULL;
 		link_count = new int(1);
 	}
 	Skeleton(const Skeleton &sk)
 	{
 		*(sk.link_count) += 1;
 		link_count = sk.link_count;
-		joints = sk.joints;
+		depth_joints = sk.depth_joints;
+		camera_joints = sk.camera_joints;
 	}
-	void copyfrom(Point *data)
+	void copyfrom(Point *depth_data, CameraSpacePoint *camera_data)
 	{
-		if (!joints)
-			joints = new Point[JointType_Count];
+		if (!depth_joints)
+		{
+			depth_joints = new Point[JointType_Count];
+			camera_joints = new CameraSpacePoint[JointType_Count];
+		}
 		for (int i = 0; i < JointType_Count; i++)
 		{
-			joints[i] = data[i];
+			depth_joints[i] = depth_data[i];
+			camera_joints[i] = camera_data[i];
 		}
 	}
 	~Skeleton()
@@ -128,8 +135,11 @@ struct Skeleton
 		*link_count -= 1;
 		if (*link_count == 0)
 		{
-			if (joints)
-				delete[] joints;
+			if (depth_joints)
+			{
+				delete[] depth_joints;
+				delete[] camera_joints;
+			}
 			delete link_count;
 		}
 	}
