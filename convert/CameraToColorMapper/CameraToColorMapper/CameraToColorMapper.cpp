@@ -126,12 +126,16 @@ int main(int argc, char *argv[])
 		}
 		else
 			frames_skipped++;
-		std::cout << "\r" << i << " out of " << frames << " frames converted";
+		std::cout << "\r" << i+1 << " out of " << frames << " frames converted";
 		if (frames_skipped>0)
 			std::cout << ", " << frames_skipped << " do not exist";
 		std::cout << std::flush;
 	}
 	std::cout << std::endl;
+	SafeRelease(m_pCoordinateMapper);
+	SafeRelease(m_pColorFrameReader);
+	m_pKinectSensor->Close();
+	SafeRelease(m_pKinectSensor);
 	return 0;
 }
 
