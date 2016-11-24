@@ -1,14 +1,4 @@
-﻿  stdafx.cpp
-  cnpy.cpp
-c:\users\vladimir\cv\kinectonereader\convert\cameratocolormapper\cameratocolormapper\cnpy\cnpy.cpp(138): warning C4244: инициализация: преобразование "unsigned __int64" в "unsigned int", возможна потеря данных
-c:\users\vladimir\cv\kinectonereader\convert\cameratocolormapper\cameratocolormapper\cnpy\cnpy.cpp(140): warning C4244: аргумент: преобразование "unsigned __int64" в "std::size_t", возможна потеря данных
-c:\users\vladimir\cv\kinectonereader\convert\cameratocolormapper\cameratocolormapper\cnpy\cnpy.cpp(147): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
-  c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\stdio.h(205): note:  см. объявление "fopen"
-c:\users\vladimir\cv\kinectonereader\convert\cameratocolormapper\cameratocolormapper\cnpy\cnpy.cpp(190): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
-  c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\stdio.h(205): note:  см. объявление "fopen"
-c:\users\vladimir\cv\kinectonereader\convert\cameratocolormapper\cameratocolormapper\cnpy\cnpy.cpp(237): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
-  c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\stdio.h(205): note:  см. объявление "fopen"
-  CameraToColorMapper.cpp
+﻿  CameraToColorMapper.cpp
 c:\users\vladimir\cv\kinectonereader\convert\cameratocolormapper\cameratocolormapper\cameratocolormapper.cpp(79): warning C4244: =: преобразование "double" в "float", возможна потеря данных
 c:\users\vladimir\cv\kinectonereader\convert\cameratocolormapper\cameratocolormapper\cameratocolormapper.cpp(80): warning C4244: =: преобразование "double" в "float", возможна потеря данных
 c:\users\vladimir\cv\kinectonereader\convert\cameratocolormapper\cameratocolormapper\cameratocolormapper.cpp(81): warning C4244: =: преобразование "double" в "float", возможна потеря данных
@@ -35,6 +25,5 @@ c:\users\vladimir\cv\kinectonereader\convert\cameratocolormapper\cameratocolorma
           [
               T=float
           ]
-  Создание кода...
   CameraToColorMapper.vcxproj -> C:\Users\Vladimir\cv\kinectonereader\convert\CameraToColorMapper\Debug\CameraToColorMapper.exe
   CameraToColorMapper.vcxproj -> C:\Users\Vladimir\cv\kinectonereader\convert\CameraToColorMapper\Debug\CameraToColorMapper.pdb (Full PDB)

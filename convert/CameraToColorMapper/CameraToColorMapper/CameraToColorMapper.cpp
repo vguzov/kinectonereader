@@ -14,7 +14,7 @@ static const int        cDepthWidth = 512;
 static const int        cDepthHeight = 424;
 ICoordinateMapper*      m_pCoordinateMapper;
 IKinectSensor*          m_pKinectSensor = NULL;
-IDepthFrameReader*      m_pDepthFrameReader = NULL;
+IColorFrameReader*      m_pColorFrameReader = NULL;
 inline bool file_exist(const std::string& name) {
 	struct stat buffer;
 	return (stat(name.c_str(), &buffer) == 0);
@@ -26,7 +26,7 @@ void SetStatusMessage(char *message)
 int CreateMapper()
 {
 	HRESULT hr;
-	IDepthFrameSource* pDepthFrameSource = NULL;
+	IColorFrameSource* pColorFrameSource = NULL;
 	hr = GetDefaultKinectSensor(&m_pKinectSensor);
 	if (FAILED(hr))
 	{
@@ -40,17 +40,17 @@ int CreateMapper()
 
 		if (SUCCEEDED(hr))
 		{
-			hr = m_pKinectSensor->get_DepthFrameSource(&pDepthFrameSource);
+			hr = m_pKinectSensor->get_ColorFrameSource(&pColorFrameSource);
 		}
 		if (SUCCEEDED(hr))
 		{
-			hr = pDepthFrameSource->OpenReader(&m_pDepthFrameReader);
+			hr = pColorFrameSource->OpenReader(&m_pColorFrameReader);
 		}
 		if (SUCCEEDED(hr))
 		{
 			hr = m_pKinectSensor->get_CoordinateMapper(&m_pCoordinateMapper);
 		}
-		SafeRelease(pDepthFrameSource);
+		SafeRelease(pColorFrameSource);
 	}
 
 	if (!m_pKinectSensor || FAILED(hr))
@@ -113,7 +113,7 @@ int main(int argc, char *argv[])
 	cnpy::NpyArray arr;
 	if (!SUCCEEDED(CreateMapper()))
 		return 0;
-	Sleep(2000);
+	Sleep(3000);
 	int frames_skipped = 0;
 	for (int i = 0; i < frames; i++)
 	{

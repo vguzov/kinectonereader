@@ -3,6 +3,7 @@
 *.lo
 *.o
 *.obj
+*.iobj
 
 # Precompiled Headers
 *.gch
@@ -33,6 +34,8 @@
 *.opensdf
 *.idb
 *.pdb
+*.db
+*.ipdb
 *.tlog
 
 # Mac .DS_Store

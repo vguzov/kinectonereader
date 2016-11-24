@@ -4,4 +4,8 @@
     <LocalDebuggerCommandArguments>C:\Users\Vladimir\Desktop\gait\fitted1 C:\Users\Vladimir\Desktop\gait\converted1 200</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LocalDebuggerCommandArguments>C:\Users\Vladimir\Desktop\gait\fitted1 C:\Users\Vladimir\Desktop\gait\converted1 200</LocalDebuggerCommandArguments>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+  </PropertyGroup>
 </Project>
