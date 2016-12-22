@@ -26,7 +26,10 @@
 EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 #define HINST_THISCOMPONENT ((HINSTANCE)&__ImageBase)
 #endif
-
+inline bool exists_test(const std::string& name) {
+	struct stat buffer;
+	return (stat(name.c_str(), &buffer) == 0);
+}
 
 int main(int argc, char *argv[])
 {
@@ -42,7 +45,7 @@ int main(int argc, char *argv[])
 /// Constructor
 /// </summary>
 CCoordinateMappingBasics::CCoordinateMappingBasics() :
-m_nStartTime(0),
+m_nLastCounter_Kinect(0),
 m_nLastCounter(0),
 m_nFramesSinceUpdate(0),
 m_fFreq(0),
@@ -79,6 +82,28 @@ backgroundCount(200)
 		m_bkg_counter[i] = 0;
 		m_background.depth[i] = 0;
 	}
+	std::vector<std::pair<std::string, bool>>launch_params;
+#ifdef WRITE_TO_BUFFER
+	launch_params.push_back(std::pair<std::string, bool>("WRITE_TO_BUFFER", true));
+#else
+	launch_params.push_back(std::pair<std::string, bool>("WRITE_TO_BUFFER", false));
+#endif
+#ifdef WRITE_NPY
+	launch_params.push_back(std::pair<std::string, bool>("WRITE_NPY", true));
+#else
+	launch_params.push_back(std::pair<std::string, bool>("WRITE_NPY", false));
+#endif
+#ifdef NO_PIC
+	launch_params.push_back(std::pair<std::string, bool>("NO_PIC", true));
+#else
+	launch_params.push_back(std::pair<std::string, bool>("NO_PIC", false));
+#endif
+#ifdef REAL_PLY
+	launch_params.push_back(std::pair<std::string, bool>("REAL_PLY", true));
+#else
+	launch_params.push_back(std::pair<std::string, bool>("REAL_PLY", false));
+#endif
+	logger.writeHead(framesCount, backgroundCount,launch_params);
 }
 int WriteNpy(const char *filename, Depthmap map, bool writebody)
 {
@@ -271,6 +296,7 @@ void CCoordinateMappingBasics::FlushBuffer()
 	cv::Mat pic_matrix(cColorHeight, cColorWidth, CV_8UC3);
 	std::string filename_temp;
 	printf("\n");
+	logger.saveToFile("./output/logfile.txt");
 	for (int frame = 0; frame < framesCount; frame++)
 	{
 		printf("Flushing data to drive... %d/%d \r", frame + 1, framesCount);
@@ -344,6 +370,14 @@ CCoordinateMappingBasics::~CCoordinateMappingBasics()
 /// <param name="nCmdShow">whether to display minimized, maximized, or normally</param>
 int CCoordinateMappingBasics::Run()
 {
+	if (exists_test("./output/background.ply")|| exists_test("./output/background.npy"))
+	{
+		char choise;
+		printf("There is data in output folder, overwrite? [y/N] ");
+		scanf("%c", &choise);
+		if ((choise != 'Y') && (choise != 'y'))
+			return 0;
+	}
 	InitializeDefaultSensor();
 	// Main message loop
 	t_depthstream_state state = DS_BACKGROUND_CAPTURING;
@@ -586,8 +620,12 @@ t_depthstream_state CCoordinateMappingBasics::Update(t_depthstream_state state)
 
 			if (SUCCEEDED(hr))
 			{
-				if (state==DS_REALTIME_CAPTURING)
+				if (state == DS_REALTIME_CAPTURING)
+				{
 					ProcessSkeleton(nTime, BODY_COUNT, ppBodies);
+					logger.getLastFrame()->isbodydetected = true;
+				}
+				
 			}
 
 			for (int i = 0; i < _countof(ppBodies); ++i)
@@ -704,6 +742,13 @@ t_depthstream_state CCoordinateMappingBasics::ProcessFrame(t_depthstream_state s
 	//m_nFramesSinceUpdate = 0;
 
 	// Make sure we've received valid data
+	LARGE_INTEGER qpcNow = { 0 };
+	QueryPerformanceCounter(&qpcNow);
+	double delta_time = double(qpcNow.QuadPart - m_nLastCounter) / m_fFreq;
+	//printf(" Time1 = %I64d    Time2 = %I64d    Diff = %I64d ", qpcNow.QuadPart - m_nLastCounter, nTime - m_nLastCounter_Kinect, 
+	//	qpcNow.QuadPart - m_nLastCounter - (nTime - m_nLastCounter_Kinect));
+	m_nLastCounter = qpcNow.QuadPart;
+	m_nLastCounter_Kinect = nTime;
 	if (m_pCoordinateMapper && m_pDepthCoordinates &&
 		pDepthBuffer && (nDepthWidth == cDepthWidth) && (nDepthHeight == cDepthHeight) &&
 		pColorBuffer && (nColorWidth == cColorWidth) && (nColorHeight == cColorHeight) &&
@@ -737,6 +782,10 @@ t_depthstream_state CCoordinateMappingBasics::ProcessFrame(t_depthstream_state s
 		{
 		case DS_BACKGROUND_CAPTURING:
 			printf("Capturing background... %d/%d \r", backgroundCount-backgroundRemain, backgroundCount);
+			if (delta_time > 1.0f / 25)
+			{
+				//TODO: repeat frames
+			}
 			for (int i = 0; i < cDepthSize; i++)
 			{
 				if (!m_depthmap.skipped[i])
@@ -768,6 +817,7 @@ t_depthstream_state CCoordinateMappingBasics::ProcessFrame(t_depthstream_state s
 			}
 			break;
 		case DS_REALTIME_CAPTURING:
+			logger.logFrame(delta_time, true, nTime);
 #ifdef WRITE_TO_BUFFER
 			WriteToBuffer(&m_depthmap, m_pColorRGBX, frameIndex);
 #endif
@@ -869,10 +919,6 @@ Point CCoordinateMappingBasics::BodyToScreen(const CameraSpacePoint& bodyPoint, 
 
 	return Point(screenPointX, screenPointY);
 }
-inline bool exists_test(const std::string& name) {
-	struct stat buffer;
-	return (stat(name.c_str(), &buffer) == 0);
-}
 void CCoordinateMappingBasics::HandleJoints(const std::string &filename, Point *m_Points, CameraSpacePoint *m_CameraPoints, int points_count)
 {
 	if (m_Points)
@@ -882,7 +928,6 @@ void CCoordinateMappingBasics::HandleJoints(const std::string &filename, Point *
 		{
 			fprintf(skel_file, "Depth %d: %.2f %.2f Camera %d: %f %f %f\n", i, m_Points[i].first, m_Points[i].second,
 			i, m_CameraPoints[i].X, m_CameraPoints[i].Y, m_CameraPoints[i].Z);
-			
 		}
 		fclose(skel_file);
 	}

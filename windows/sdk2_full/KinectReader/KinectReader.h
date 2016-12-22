@@ -6,8 +6,13 @@
 
 #pragma once
 #include <vector>
+#include <sstream>
+#include <fstream>
+#include <iomanip>
+#include <queue>
 #include <Kinect.h>
 #include <windows.h>
+#include <chrono>
 static const int        cDepthWidth = 512;
 static const int        cDepthHeight = 424;
 static const int        cColorWidth = 1920;
@@ -144,7 +149,105 @@ struct Skeleton
 		}
 	}
 };
-
+class LogLine
+{
+public:
+	float delta;
+	bool isorig;
+	bool isbodydetected;
+	INT64 kinect_timestamp;
+	int framenum;
+	LogLine(int framenum, float delta, bool isorig, bool isbodydetected, INT64 kinect_timestamp)
+	{
+		this->delta = delta;
+		this->isorig = isorig;
+		this->isbodydetected = isbodydetected;
+		this->kinect_timestamp = kinect_timestamp;
+		this->framenum = framenum;
+	}
+	friend std::ostream &operator<< (std::ostream &str, const LogLine &line);
+};
+std::ostream &operator<< (std::ostream &str, const LogLine &line)
+{
+	str << std::setfill('0') << std::setw(4)
+		<< line.framenum << "; " << (line.isorig ? "orig" : "copy")
+		<< "; " << (line.isbodydetected ? "skel" : "none") << "; "
+		<< std::setprecision(2) << 1 / line.delta << "; "
+		<< line.delta << "; " << line.kinect_timestamp << std::endl;
+	return str;
+}
+class Logger
+{
+	std::vector<LogLine> logtext;
+	std::string headerstr;
+	int framenum;
+public:
+	Logger():framenum(0) {}
+	LogLine *getLastFrame()
+	{
+		if (framenum == 0)
+		{
+			return NULL;
+		}
+		else
+		{
+			return &logtext[framenum - 1];
+		}
+	}
+	void logFrame(float delta, bool isorig,INT64 kinect_timestamp)
+	{
+		logtext.push_back(LogLine(framenum++, delta, isorig, false, kinect_timestamp));
+	}
+	void writeHead(int framescount, int bkgframescount, const std::vector<std::pair<std::string, bool>> &launch_params)
+	{
+		std::stringstream logline;
+		std::time_t time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+		logline << "# Created at " << std::ctime(&time) << std::endl;
+		logline << "# Videoset frames: " << framescount << std::endl;
+		logline << "# Background frames: " << bkgframescount << std::endl;
+		logline << "# Launch parameters:" << std::endl;
+		for (auto it = launch_params.cbegin(); it != launch_params.cend(); ++it)
+		{
+			logline << "#     " << it->first << ": " << (it->second ? "TRUE" : "FALSE") << std::endl;
+		}
+		logline << "# Number; Original or copied; Is skeleton detected; FPS; time from previous frame; Kinect timestamp" << std::endl;
+		headerstr = logline.str();
+	}
+	void saveToFile(const std::string &filepath)
+	{
+		std::ofstream logfile;
+		bool lastskel = false;
+		logfile.open(filepath, std::ios::out);
+		logfile << headerstr;
+		for (int i=0; i<logtext.size(); i++)
+		{
+			if (!logtext[i].isorig && lastskel)
+			{
+				int j = i + 1;
+				bool res = true;
+				while ((j < logtext.size()) && !logtext[j].isorig)
+				{
+					j++;
+				}
+				if ((j >= logtext.size())||!logtext[j].isbodydetected)
+				{
+					res = false;
+				}
+				for (int k = i + 1; k < j; k++)
+				{
+					logtext[k].isbodydetected = res;
+					logfile << logtext[k];
+				}
+				i = j;
+			}
+			if (logtext[i].isorig)
+			{
+				lastskel = logtext[i].isbodydetected;
+			}
+		}
+		logfile.close();
+	}
+};
 class CCoordinateMappingBasics
 {
 public:
@@ -171,7 +274,10 @@ public:
     int                     Run(void);
 
 private:
-    INT64                   m_nStartTime;
+	std::queue<int>         doubled_frames;
+	Logger                  logger;
+	
+    INT64                   m_nLastCounter_Kinect;
     INT64                   m_nLastCounter;
     double                  m_fFreq;
     INT64                   m_nNextStatusTime;
