@@ -292,12 +292,11 @@ void CCoordinateMappingBasics::FlushBuffer()
 			if ((source_frame >= 0) && (logger.getFrame(source_frame)->isbodydetected))
 			{
 				int x = frame+1;
-				auto it = doubled_frames.begin();
-				for (; (it != doubled_frames.end()) && (*it == x); ++it)
+				for (auto it = doubled_frames.begin(); (it != doubled_frames.end()) && (*it == x); ++it)
 				{
 					x = *it + 1;
 				}
-				if (it != doubled_frames.end() && (logger.getFrame(x)->isbodydetected))
+				if ((x<framesCount) && (logger.getFrame(x)->isbodydetected))
 				{
 					m_jointbuffer[frame] = InterpolateJoints(m_jointbuffer[source_frame], m_jointbuffer[x]);
 					logger.getFrame(frame)->isbodydetected = true;
@@ -308,7 +307,7 @@ void CCoordinateMappingBasics::FlushBuffer()
 				int x = frame+1;
 				for (auto it = doubled_frames.begin(); (it != doubled_frames.end()) && (*it == x); ++it)
 				{
-					x = *it+1;
+					x = *it + 1;
 				}
 				source_frame = x;
 			}
