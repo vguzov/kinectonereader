@@ -32,6 +32,7 @@
 # Visual studio debug information
 *.sdf
 *.opensdf
+*.opendb
 *.idb
 *.pdb
 *.db

@@ -47,6 +47,7 @@ int main(int argc, char *argv[])
 CCoordinateMappingBasics::CCoordinateMappingBasics() :
 m_nLastCounter_Kinect(0),
 m_nLastCounter(0),
+m_skipped_frames_counter(0),
 m_nFramesSinceUpdate(0),
 m_fFreq(0),
 m_nNextStatusTime(0LL),
@@ -66,7 +67,6 @@ backgroundCount(200)
 	{
 		m_fFreq = double(qpf.QuadPart);
 	}
-
 	// create heap storage for color pixel data in RGBX format
 	m_pColorRGBX = new RGBQUAD[cColorWidth * cColorHeight];
 
@@ -82,28 +82,6 @@ backgroundCount(200)
 		m_bkg_counter[i] = 0;
 		m_background.depth[i] = 0;
 	}
-	std::vector<std::pair<std::string, bool>>launch_params;
-#ifdef WRITE_TO_BUFFER
-	launch_params.push_back(std::pair<std::string, bool>("WRITE_TO_BUFFER", true));
-#else
-	launch_params.push_back(std::pair<std::string, bool>("WRITE_TO_BUFFER", false));
-#endif
-#ifdef WRITE_NPY
-	launch_params.push_back(std::pair<std::string, bool>("WRITE_NPY", true));
-#else
-	launch_params.push_back(std::pair<std::string, bool>("WRITE_NPY", false));
-#endif
-#ifdef NO_PIC
-	launch_params.push_back(std::pair<std::string, bool>("NO_PIC", true));
-#else
-	launch_params.push_back(std::pair<std::string, bool>("NO_PIC", false));
-#endif
-#ifdef REAL_PLY
-	launch_params.push_back(std::pair<std::string, bool>("REAL_PLY", true));
-#else
-	launch_params.push_back(std::pair<std::string, bool>("REAL_PLY", false));
-#endif
-	logger.writeHead(framesCount, backgroundCount,launch_params);
 }
 int WriteNpy(const char *filename, Depthmap map, bool writebody)
 {
@@ -296,35 +274,67 @@ void CCoordinateMappingBasics::FlushBuffer()
 	cv::Mat pic_matrix(cColorHeight, cColorWidth, CV_8UC3);
 	std::string filename_temp;
 	printf("\n");
-	logger.saveToFile("./output/logfile.txt");
+	WriteLogHead();
+	int source_frame = -1, next_frame;
 	for (int frame = 0; frame < framesCount; frame++)
 	{
 		printf("Flushing data to drive... %d/%d \r", frame + 1, framesCount);
 		filename_temp = std::string("./output/") + std::to_string(frame);
+		if ((doubled_frames.size()>0) && (doubled_frames.front() == frame))
+		{
+			doubled_frames.pop_front();
+			if ((source_frame >= 0) && (logger.getFrame(source_frame)->isbodydetected))
+			{
+				int x = frame+1;
+				auto it = doubled_frames.begin();
+				for (; (it != doubled_frames.end()) && (*it == x); ++it)
+				{
+					x = *it + 1;
+				}
+				if (it != doubled_frames.end() && (logger.getFrame(x)->isbodydetected))
+				{
+					m_jointbuffer[frame] = InterpolateJoints(m_jointbuffer[source_frame], m_jointbuffer[x]);
+					logger.getFrame(frame)->isbodydetected = true;
+				}
+			}
+			if (source_frame == -1)
+			{
+				int x = frame+1;
+				for (auto it = doubled_frames.begin(); (it != doubled_frames.end()) && (*it == x); ++it)
+				{
+					x = *it+1;
+				}
+				source_frame = x;
+			}
+		}
+		else
+		{
+			source_frame = frame;
+		}
 #ifndef NO_PIC
 		for (int i = 0; i < cColorSize; i++)
 		{
-			pic_matrix.data[i * 3] = m_picturebuffer[frame].data[i].rgbBlue;
-			pic_matrix.data[i * 3 + 1] = m_picturebuffer[frame].data[i].rgbGreen;
-			pic_matrix.data[i * 3 + 2] = m_picturebuffer[frame].data[i].rgbRed;
+			pic_matrix.data[i * 3] = m_picturebuffer[source_frame].data[i].rgbBlue;
+			pic_matrix.data[i * 3 + 1] = m_picturebuffer[source_frame].data[i].rgbGreen;
+			pic_matrix.data[i * 3 + 2] = m_picturebuffer[source_frame].data[i].rgbRed;
 		}
-		cv::imwrite(filename_temp+".png", pic_matrix);
+		cv::imwrite(filename_temp + ".png", pic_matrix);
 #endif
 #ifdef WRITE_NPY
-		WriteNpy((filename_temp + ".npy").c_str(), m_depthbuffer[frame], true);
+		WriteNpy((filename_temp + ".npy").c_str(), m_depthbuffer[source_frame], true);
 #else
 #ifdef REAL_PLY
-		Pointcloud cloud = ConvertToPointcloud(m_depthbuffer[frame], true);
+		Pointcloud cloud = ConvertToPointcloud(m_depthbuffer[source_frame], true);
 		WriteRealPly((filename_temp + ".ply").c_str(), cloud);
 		delete[] cloud.first;
 		delete[] cloud.second;
 #else
-		WritePly((filename_temp + ".ply").c_str(), m_depthbuffer[frame], true);
+		WritePly((filename_temp + ".ply").c_str(), m_depthbuffer[source_frame], true);
 #endif
 #endif
 		HandleJoints(filename_temp + ".txt", m_jointbuffer[frame].depth_joints, m_jointbuffer[frame].camera_joints, JointType_Count);
 	}
-
+	logger.saveToFile("./output/logfile.txt");
 }
 /// <summary>
 /// Destructor
@@ -377,6 +387,7 @@ int CCoordinateMappingBasics::Run()
 		scanf("%c", &choise);
 		if ((choise != 'Y') && (choise != 'y'))
 			return 0;
+		getchar();
 	}
 	InitializeDefaultSensor();
 	// Main message loop
@@ -398,6 +409,7 @@ int CCoordinateMappingBasics::Run()
 			}
 			printf("\n");
 			state = DS_REALTIME_CAPTURING;
+			m_nLastCounter = -1;
 			SetConsoleTextAttribute(hConsole, colors[3]);
 		}
 	}
@@ -406,12 +418,37 @@ int CCoordinateMappingBasics::Run()
 	
 	return 0;
 }
-
+void CCoordinateMappingBasics::WriteLogHead()
+{
+	std::vector<std::pair<std::string, bool>>launch_params;
+#ifdef WRITE_TO_BUFFER
+	launch_params.push_back(std::pair<std::string, bool>("WRITE_TO_BUFFER", true));
+#else
+	launch_params.push_back(std::pair<std::string, bool>("WRITE_TO_BUFFER", false));
+#endif
+#ifdef WRITE_NPY
+	launch_params.push_back(std::pair<std::string, bool>("WRITE_NPY", true));
+#else
+	launch_params.push_back(std::pair<std::string, bool>("WRITE_NPY", false));
+#endif
+#ifdef NO_PIC
+	launch_params.push_back(std::pair<std::string, bool>("NO_PIC", true));
+#else
+	launch_params.push_back(std::pair<std::string, bool>("NO_PIC", false));
+#endif
+#ifdef REAL_PLY
+	launch_params.push_back(std::pair<std::string, bool>("REAL_PLY", true));
+#else
+	launch_params.push_back(std::pair<std::string, bool>("REAL_PLY", false));
+#endif
+	logger.writeHead(framesCount, m_skipped_frames_counter, backgroundCount, launch_params);
+}
 void CCoordinateMappingBasics::WriteToBuffer(Depthmap *dm, RGBQUAD *pic, int framenum)
 {
 	m_depthbuffer[framenum].copyfrom(dm);
 	m_picturebuffer[framenum].copyfrom(pic);
 }
+
 /// <summary>
 /// Main processing function
 /// </summary>
@@ -482,6 +519,8 @@ t_depthstream_state CCoordinateMappingBasics::Update(t_depthstream_state state)
 
 	if (SUCCEEDED(hr))
 	{
+		bool bodydetected = false;
+
 		INT64 nDepthTime = 0;
 		IFrameDescription* pDepthFrameDescription = NULL;
 		int nDepthWidth = 0;
@@ -604,12 +643,17 @@ t_depthstream_state CCoordinateMappingBasics::Update(t_depthstream_state state)
 		{
 			hr = pBodyIndexFrame->AccessUnderlyingBuffer(&nBodyIndexBufferSize, &pBodyIndexBuffer);
 		}
-
+		
 		if (SUCCEEDED(hr))
 		{
 			INT64 nTime = 0;
 
 			hr = pBodyFrame->get_RelativeTime(&nTime);
+
+			state = ProcessFrame(state, nDepthTime, pDepthBuffer, nDepthWidth, nDepthHeight,
+				pColorBuffer, nColorWidth, nColorHeight,
+				pBodyIndexBuffer, nBodyIndexWidth, nBodyIndexHeight,
+				nDepthMinReliableDistance, nDepthMaxDistance);
 
 			IBody* ppBodies[BODY_COUNT] = { 0 };
 
@@ -622,23 +666,15 @@ t_depthstream_state CCoordinateMappingBasics::Update(t_depthstream_state state)
 			{
 				if (state == DS_REALTIME_CAPTURING)
 				{
-					ProcessSkeleton(nTime, BODY_COUNT, ppBodies);
-					logger.getLastFrame()->isbodydetected = true;
+					bodydetected = ProcessSkeleton(nTime, BODY_COUNT, ppBodies);
+					logger.getLastFrame()->isbodydetected = bodydetected;
 				}
-				
 			}
 
 			for (int i = 0; i < _countof(ppBodies); ++i)
 			{
 				SafeRelease(ppBodies[i]);
 			}
-		}
-		if (SUCCEEDED(hr))
-		{
-			state = ProcessFrame(state, nDepthTime, pDepthBuffer, nDepthWidth, nDepthHeight,
-				pColorBuffer, nColorWidth, nColorHeight,
-				pBodyIndexBuffer, nBodyIndexWidth, nBodyIndexHeight,
-				nDepthMinReliableDistance, nDepthMaxDistance);
 		}
 		SafeRelease(pDepthFrameDescription);
 		SafeRelease(pColorFrameDescription);
@@ -743,8 +779,16 @@ t_depthstream_state CCoordinateMappingBasics::ProcessFrame(t_depthstream_state s
 
 	// Make sure we've received valid data
 	LARGE_INTEGER qpcNow = { 0 };
+	double delta_time;
 	QueryPerformanceCounter(&qpcNow);
-	double delta_time = double(qpcNow.QuadPart - m_nLastCounter) / m_fFreq;
+	if (m_nLastCounter == -1)
+	{
+		delta_time = 0;
+	}
+	else
+	{
+		delta_time = double(qpcNow.QuadPart - m_nLastCounter) / m_fFreq;
+	}
 	//printf(" Time1 = %I64d    Time2 = %I64d    Diff = %I64d ", qpcNow.QuadPart - m_nLastCounter, nTime - m_nLastCounter_Kinect, 
 	//	qpcNow.QuadPart - m_nLastCounter - (nTime - m_nLastCounter_Kinect));
 	m_nLastCounter = qpcNow.QuadPart;
@@ -782,10 +826,6 @@ t_depthstream_state CCoordinateMappingBasics::ProcessFrame(t_depthstream_state s
 		{
 		case DS_BACKGROUND_CAPTURING:
 			printf("Capturing background... %d/%d \r", backgroundCount-backgroundRemain, backgroundCount);
-			if (delta_time > 1.0f / 25)
-			{
-				//TODO: repeat frames
-			}
 			for (int i = 0; i < cDepthSize; i++)
 			{
 				if (!m_depthmap.skipped[i])
@@ -817,7 +857,14 @@ t_depthstream_state CCoordinateMappingBasics::ProcessFrame(t_depthstream_state s
 			}
 			break;
 		case DS_REALTIME_CAPTURING:
-			logger.logFrame(delta_time, true, nTime);
+			if (delta_time > 1.0f / 25)
+			{
+				doubled_frames.push_back(frameIndex);
+				logger.logFrame(0, false, false, 0);
+				frameIndex++;
+				m_skipped_frames_counter++;
+			}
+			logger.logFrame(delta_time, true, false, nTime);
 #ifdef WRITE_TO_BUFFER
 			WriteToBuffer(&m_depthmap, m_pColorRGBX, frameIndex);
 #endif
@@ -939,7 +986,21 @@ void CCoordinateMappingBasics::HandleJoints(const std::string &filename, Point *
 		}
 	}
 }
-void CCoordinateMappingBasics::ProcessSkeleton(INT64 nTime, int nBodyCount, IBody** ppBodies)
+Skeleton CCoordinateMappingBasics::InterpolateJoints(const Skeleton &skel_from, const Skeleton &skel_to)
+{
+	Skeleton skel_res;
+	skel_res.zeroinit();
+	for (int i = 0; i < JointType_Count; i++)
+	{
+		skel_res.depth_joints[i].first = (skel_from.depth_joints[i].first + skel_to.depth_joints[i].first) / 2;
+		skel_res.depth_joints[i].second = (skel_from.depth_joints[i].second + skel_to.depth_joints[i].second) / 2;
+		skel_res.camera_joints[i].X = (skel_from.camera_joints[i].X + skel_to.camera_joints[i].X) / 2;
+		skel_res.camera_joints[i].Y = (skel_from.camera_joints[i].Y + skel_to.camera_joints[i].Y) / 2;
+		skel_res.camera_joints[i].Z = (skel_from.camera_joints[i].Z + skel_to.camera_joints[i].Z) / 2;
+	}
+	return skel_res;
+}
+bool CCoordinateMappingBasics::ProcessSkeleton(INT64 nTime, int nBodyCount, IBody** ppBodies)
 {
 	int width = cDepthWidth;
 	int height = cDepthHeight;
@@ -968,15 +1029,16 @@ void CCoordinateMappingBasics::ProcessSkeleton(INT64 nTime, int nBodyCount, IBod
 						jointPointsCamera[j] = joints[j].Position;
 					}
 #ifdef WRITE_TO_BUFFER
-					m_jointbuffer[frameIndex].copyfrom(jointPoints, jointPointsCamera);
+					m_jointbuffer[frameIndex-1].copyfrom(jointPoints, jointPointsCamera);
 #else
 					HandleJoints(std::to_string(framesCount)+".txt",jointPoints, jointPointsCamera, JointType_Count);
 #endif
-					break;
+					return true;
 				}
 			}
 		}
 	}
+	return false;
 }
 /// <summary>
 /// Load an image from a resource into a buffer

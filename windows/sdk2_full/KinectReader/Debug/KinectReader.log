@@ -1,9 +1,31 @@
 ﻿  KinectReader.cpp
-c:\users\vladimir\cv\kinectonereader\windows\sdk2_full\kinectreader\kinectreader.cpp(262): warning C4800: const bool *: принудительно задано логическое значение "true" или "false" (предупреждение о производительности)
-c:\users\vladimir\cv\kinectonereader\windows\sdk2_full\kinectreader\kinectreader.cpp(879): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+c:\users\vladimir\cv\kinectonereader\windows\sdk2_full\kinectreader\kinectreader.h(224): warning C4996: 'ctime': This function or variable may be unsafe. Consider using ctime_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\time.h(475): note:  см. объявление "ctime"
+c:\users\vladimir\cv\kinectonereader\windows\sdk2_full\kinectreader\kinectreader.h(241): warning C4018: <: несоответствие типов со знаком и без знака
+c:\users\vladimir\cv\kinectonereader\windows\sdk2_full\kinectreader\kinectreader.h(247): warning C4018: <: несоответствие типов со знаком и без знака
+c:\users\vladimir\cv\kinectonereader\windows\sdk2_full\kinectreader\kinectreader.h(251): warning C4018: >=: несоответствие типов со знаком и без знака
+c:\users\vladimir\cv\kinectonereader\windows\sdk2_full\kinectreader\kinectreader.cpp(286): warning C4800: const bool *: принудительно задано логическое значение "true" или "false" (предупреждение о производительности)
+c:\users\vladimir\cv\kinectonereader\windows\sdk2_full\kinectreader\kinectreader.cpp(299): warning C4101: next_frame: неиспользованная локальная переменная
+c:\users\vladimir\cv\kinectonereader\windows\sdk2_full\kinectreader\kinectreader.cpp(407): warning C4996: 'scanf': This function or variable may be unsafe. Consider using scanf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\stdio.h(1270): note:  см. объявление "scanf"
+c:\users\vladimir\cv\kinectonereader\windows\sdk2_full\kinectreader\kinectreader.cpp(861): warning C4244: аргумент: преобразование "double" в "float", возможна потеря данных
+c:\users\vladimir\cv\kinectonereader\windows\sdk2_full\kinectreader\kinectreader.cpp(967): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
   c:\program files (x86)\windows kits\10\include\10.0.10240.0\ucrt\stdio.h(205): note:  см. объявление "fopen"
+c:\program files (x86)\microsoft visual studio 14.0\vc\include\utility(172): warning C4244: инициализация: преобразование "int" в "float", возможна потеря данных
+  c:\users\vladimir\cv\kinectonereader\windows\sdk2_full\kinectreader\kinectreader.h(134): note: см. ссылку на создание экземпляров функции шаблон при компиляции "std::pair<float,float>::pair<int,int,void,0>(_Other1 &&,_Other2 &&) noexcept"
+          with
+          [
+              _Other1=int,
+              _Other2=int
+          ]
+  c:\users\vladimir\cv\kinectonereader\windows\sdk2_full\kinectreader\kinectreader.h(134): note: см. ссылку на создание экземпляров функции шаблон при компиляции "std::pair<float,float>::pair<int,int,void,0>(_Other1 &&,_Other2 &&) noexcept"
+          with
+          [
+              _Other1=int,
+              _Other2=int
+          ]
 c:\users\vladimir\cv\kinectonereader\windows\sdk2_full\kinectreader\cnpy\cnpy.h(87): warning C4018: <: несоответствие типов со знаком и без знака
-  c:\users\vladimir\cv\kinectonereader\windows\sdk2_full\kinectreader\kinectreader.cpp(100): note: см. ссылку на создание экземпляров функции шаблон при компиляции "void cnpy::npy_save<int>(std::string,const T *,const unsigned int *,const unsigned int,std::string)"
+  c:\users\vladimir\cv\kinectonereader\windows\sdk2_full\kinectreader\kinectreader.cpp(124): note: см. ссылку на создание экземпляров функции шаблон при компиляции "void cnpy::npy_save<int>(std::string,const T *,const unsigned int *,const unsigned int,std::string)"
           with
           [
               T=int
@@ -19,14 +41,10 @@ c:\users\vladimir\cv\kinectonereader\windows\sdk2_full\kinectreader\cnpy\cnpy.h(
           [
               T=int
           ]
-  c:\users\vladimir\cv\kinectonereader\windows\sdk2_full\kinectreader\kinectreader.cpp(100): note: см. ссылку на создание экземпляров функции шаблон при компиляции "void cnpy::npy_save<int>(std::string,const T *,const unsigned int *,const unsigned int,std::string)"
+  c:\users\vladimir\cv\kinectonereader\windows\sdk2_full\kinectreader\kinectreader.cpp(124): note: см. ссылку на создание экземпляров функции шаблон при компиляции "void cnpy::npy_save<int>(std::string,const T *,const unsigned int *,const unsigned int,std::string)"
           with
           [
               T=int
           ]
-  Создание кода...
-  Компиляция...
-  stdafx.cpp
-  Создание кода...
   KinectReader.vcxproj -> C:\Users\Vladimir\cv\kinectonereader\windows\sdk2_full\KinectReader\Debug\KinectReader.exe
   KinectReader.vcxproj -> C:\Users\Vladimir\cv\kinectonereader\windows\sdk2_full\KinectReader\Debug\KinectReader.pdb (Full PDB)

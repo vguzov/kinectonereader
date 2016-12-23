@@ -9,7 +9,7 @@
 #include <sstream>
 #include <fstream>
 #include <iomanip>
-#include <queue>
+#include <list>
 #include <Kinect.h>
 #include <windows.h>
 #include <chrono>
@@ -122,6 +122,21 @@ struct Skeleton
 		depth_joints = sk.depth_joints;
 		camera_joints = sk.camera_joints;
 	}
+	void zeroinit()
+	{
+		if (!depth_joints)
+		{
+			depth_joints = new Point[JointType_Count];
+			camera_joints = new CameraSpacePoint[JointType_Count];
+		}
+		for (int i = 0; i < JointType_Count; i++)
+		{
+			depth_joints[i] = Point(0,0);
+			camera_joints[i].X = 0;
+			camera_joints[i].Y = 0;
+			camera_joints[i].Z = 0;
+		}
+	}
 	void copyfrom(Point *depth_data, CameraSpacePoint *camera_data)
 	{
 		if (!depth_joints)
@@ -194,16 +209,20 @@ public:
 			return &logtext[framenum - 1];
 		}
 	}
-	void logFrame(float delta, bool isorig,INT64 kinect_timestamp)
+	LogLine *getFrame(int frame)
 	{
-		logtext.push_back(LogLine(framenum++, delta, isorig, false, kinect_timestamp));
+		return &logtext[frame];
 	}
-	void writeHead(int framescount, int bkgframescount, const std::vector<std::pair<std::string, bool>> &launch_params)
+	void logFrame(float delta, bool isorig, bool isbodydetected, INT64 kinect_timestamp)
+	{
+		logtext.push_back(LogLine(framenum++, delta, isorig, isbodydetected, kinect_timestamp));
+	}
+	void writeHead(int framescount, int skipped_frames, int bkgframescount, const std::vector<std::pair<std::string, bool>> &launch_params)
 	{
 		std::stringstream logline;
 		std::time_t time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 		logline << "# Created at " << std::ctime(&time) << std::endl;
-		logline << "# Videoset frames: " << framescount << std::endl;
+		logline << "# Videoset frames: " << framescount << ", " << skipped_frames << " skipped" << std::endl;
 		logline << "# Background frames: " << bkgframescount << std::endl;
 		logline << "# Launch parameters:" << std::endl;
 		for (auto it = launch_params.cbegin(); it != launch_params.cend(); ++it)
@@ -221,29 +240,31 @@ public:
 		logfile << headerstr;
 		for (int i=0; i<logtext.size(); i++)
 		{
-			if (!logtext[i].isorig && lastskel)
-			{
-				int j = i + 1;
-				bool res = true;
-				while ((j < logtext.size()) && !logtext[j].isorig)
-				{
-					j++;
-				}
-				if ((j >= logtext.size())||!logtext[j].isbodydetected)
-				{
-					res = false;
-				}
-				for (int k = i + 1; k < j; k++)
-				{
-					logtext[k].isbodydetected = res;
-					logfile << logtext[k];
-				}
-				i = j;
-			}
-			if (logtext[i].isorig)
-			{
-				lastskel = logtext[i].isbodydetected;
-			}
+			//if ((!logtext[i].isorig) && lastskel)
+			//{
+			//	int j = i + 1;
+			//	bool res = true;
+			//	while ((j < logtext.size()) && (!logtext[j].isorig))
+			//	{
+			//		j++;
+			//	}
+			//	if ((j >= logtext.size())||(!logtext[j].isbodydetected))
+			//	{
+			//		res = false;
+			//	}
+			//	for (int k = i + 1; k < j; k++)
+			//	{
+			//		logtext[k].isbodydetected = res;
+			//		logfile << logtext[k];
+			//	}
+			//	i = j;
+			//}
+			//if (logtext[i].isorig)
+			//{
+			//	logfile << logtext[i];
+			//	lastskel = logtext[i].isbodydetected;
+			//}
+			logfile << logtext[i];
 		}
 		logfile.close();
 	}
@@ -274,7 +295,8 @@ public:
     int                     Run(void);
 
 private:
-	std::queue<int>         doubled_frames;
+	int                    m_skipped_frames_counter;
+	std::list<int>         doubled_frames;
 	Logger                  logger;
 	
     INT64                   m_nLastCounter_Kinect;
@@ -303,7 +325,7 @@ private:
 
 	Skeleton*                  m_jointbuffer;
 
-
+	void WriteLogHead();
 	void WriteToBuffer(Depthmap *dm, RGBQUAD *pic, int framenum);
 	void FlushBuffer();
 	Pointcloud ConvertToPointcloud(Depthmap dmap, bool onlybody);
@@ -337,9 +359,10 @@ private:
                                          const BYTE* pBodyIndexBuffer, int nBodyIndexWidth, int nBodyIndexHeight, 
 										 USHORT nMinDepth, USHORT nMaxDepth);
 
-	void ProcessSkeleton(INT64 nTime, int nBodyCount, IBody** ppBodies);
+	bool ProcessSkeleton(INT64 nTime, int nBodyCount, IBody** ppBodies);
 	Point BodyToScreen(const CameraSpacePoint& bodyPoint, int width, int height);
 	void HandleJoints(const std::string &filename, Point *m_Points, CameraSpacePoint *m_CameraPoints, int points_count);
+	Skeleton InterpolateJoints(const Skeleton &skel_from, const Skeleton &skel_to);
     /// <summary>
     /// Set the status bar message
     /// </summary>

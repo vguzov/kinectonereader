@@ -1,13 +1,29 @@
 ﻿  KinectReader.cpp
-c:\users\vladimir\cv\kinectonereader\windows\sdk2_full\kinectreader\KinectReader.h(172): warning C4996: 'ctime': This function or variable may be unsafe. Consider using ctime_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+c:\users\vladimir\cv\kinectonereader\windows\sdk2_full\kinectreader\KinectReader.h(224): warning C4996: 'ctime': This function or variable may be unsafe. Consider using ctime_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
   C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\time.h(475): note:  см. объявление "ctime"
-KinectReader.cpp(287): warning C4800: const bool *: принудительно задано логическое значение "true" или "false" (предупреждение о производительности)
-KinectReader.cpp(377): warning C4996: 'scanf': This function or variable may be unsafe. Consider using scanf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+c:\users\vladimir\cv\kinectonereader\windows\sdk2_full\kinectreader\KinectReader.h(241): warning C4018: <: несоответствие типов со знаком и без знака
+KinectReader.cpp(265): warning C4800: const bool *: принудительно задано логическое значение "true" или "false" (предупреждение о производительности)
+KinectReader.cpp(278): warning C4101: next_frame: неиспользованная локальная переменная
+KinectReader.cpp(387): warning C4996: 'scanf': This function or variable may be unsafe. Consider using scanf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
   C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\stdio.h(1270): note:  см. объявление "scanf"
-KinectReader.cpp(917): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+KinectReader.cpp(867): warning C4244: аргумент: преобразование "double" в "float", возможна потеря данных
+KinectReader.cpp(973): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
   C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\stdio.h(205): note:  см. объявление "fopen"
+C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include\utility(172): warning C4244: инициализация: преобразование "int" в "float", возможна потеря данных
+  c:\users\vladimir\cv\kinectonereader\windows\sdk2_full\kinectreader\KinectReader.h(134): note: см. ссылку на создание экземпляров функции шаблон при компиляции "std::pair<float,float>::pair<int,int,void,0>(_Other1 &&,_Other2 &&) noexcept"
+          with
+          [
+              _Other1=int,
+              _Other2=int
+          ]
+  c:\users\vladimir\cv\kinectonereader\windows\sdk2_full\kinectreader\KinectReader.h(134): note: см. ссылку на создание экземпляров функции шаблон при компиляции "std::pair<float,float>::pair<int,int,void,0>(_Other1 &&,_Other2 &&) noexcept"
+          with
+          [
+              _Other1=int,
+              _Other2=int
+          ]
 c:\users\vladimir\cv\kinectonereader\windows\sdk2_full\kinectreader\cnpy\cnpy.h(87): warning C4018: <: несоответствие типов со знаком и без знака
-  KinectReader.cpp(125): note: см. ссылку на создание экземпляров функции шаблон при компиляции "void cnpy::npy_save<int>(std::string,const T *,const unsigned int *,const unsigned int,std::string)"
+  KinectReader.cpp(103): note: см. ссылку на создание экземпляров функции шаблон при компиляции "void cnpy::npy_save<int>(std::string,const T *,const unsigned int *,const unsigned int,std::string)"
           with
           [
               T=int
@@ -23,15 +39,15 @@ c:\users\vladimir\cv\kinectonereader\windows\sdk2_full\kinectreader\cnpy\cnpy.h(
           [
               T=int
           ]
-  KinectReader.cpp(125): note: см. ссылку на создание экземпляров функции шаблон при компиляции "void cnpy::npy_save<int>(std::string,const T *,const unsigned int *,const unsigned int,std::string)"
+  KinectReader.cpp(103): note: см. ссылку на создание экземпляров функции шаблон при компиляции "void cnpy::npy_save<int>(std::string,const T *,const unsigned int *,const unsigned int,std::string)"
           with
           [
               T=int
           ]
   Создание кода
-  1 of 719 functions ( 0.1%) were compiled, the rest were copied from previous compilation.
+  3 of 736 functions ( 0.4%) were compiled, the rest were copied from previous compilation.
     0 functions were new in current compilation
-    42 functions had inline decision re-evaluated but remain unchanged
+    23 functions had inline decision re-evaluated but remain unchanged
   Создание кода завершено
   KinectReader.vcxproj -> C:\Users\Vladimir\cv\kinectonereader\windows\sdk2_full\KinectReader\Release\KinectReader.exe
   KinectReader.vcxproj -> C:\Users\Vladimir\cv\kinectonereader\windows\sdk2_full\KinectReader\Release\KinectReader.pdb (Full PDB)
