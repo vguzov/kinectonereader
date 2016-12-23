@@ -17,10 +17,12 @@
 #include <sys/stat.h>
 #include <cstdio>
 #include <windows.h>
+
 #define WRITE_TO_BUFFER
 #define WRITE_NPY
-#define NO_PIC
-#define REAL_PLY
+//#define NO_PIC
+//#define REAL_PLY
+//#define COMPRESS_IMAGES
 
 #ifndef HINST_THISCOMPONENT
 EXTERN_C IMAGE_DOS_HEADER __ImageBase;
@@ -70,7 +72,11 @@ backgroundCount(200)
 	// create heap storage for color pixel data in RGBX format
 	m_pColorRGBX = new RGBQUAD[cColorWidth * cColorHeight];
 
+#ifdef COMPRESS_IMAGES
+	m_picturebuffer = new EncodedPicture[framesCount];
+#else
 	m_picturebuffer = new Picture[framesCount];
+#endif
 	m_jointbuffer = new Skeleton[framesCount];
 	// create heap storage for the coorinate mapping from color to depth
 	m_pDepthCoordinates = new DepthSpacePoint[cColorWidth * cColorHeight];
@@ -312,12 +318,17 @@ void CCoordinateMappingBasics::FlushBuffer()
 			source_frame = frame;
 		}
 #ifndef NO_PIC
+#ifdef COMPRESS_IMAGES
+		pic_matrix = m_picturebuffer[source_frame];
+#else
 		for (int i = 0; i < cColorSize; i++)
 		{
 			pic_matrix.data[i * 3] = m_picturebuffer[source_frame].data[i].rgbBlue;
 			pic_matrix.data[i * 3 + 1] = m_picturebuffer[source_frame].data[i].rgbGreen;
 			pic_matrix.data[i * 3 + 2] = m_picturebuffer[source_frame].data[i].rgbRed;
+			
 		}
+#endif
 		cv::imwrite(filename_temp + ".png", pic_matrix);
 #endif
 #ifdef WRITE_NPY
@@ -356,7 +367,7 @@ CCoordinateMappingBasics::~CCoordinateMappingBasics()
 
 	delete[] m_depthbuffer;
 	delete[] m_bkg_counter;
-	delete[] m_picturebuffer;
+	//delete[] m_picturebuffer;
 
 	// done with frame reader
 	SafeRelease(m_pMultiSourceFrameReader);
@@ -857,7 +868,7 @@ t_depthstream_state CCoordinateMappingBasics::ProcessFrame(t_depthstream_state s
 			}
 			break;
 		case DS_REALTIME_CAPTURING:
-			if (delta_time > 1.0f / 25)
+			if (delta_time > 1.0f / 20)
 			{
 				doubled_frames.push_back(frameIndex);
 				logger.logFrame(0, false, false, 0);
@@ -866,9 +877,12 @@ t_depthstream_state CCoordinateMappingBasics::ProcessFrame(t_depthstream_state s
 			}
 			logger.logFrame(delta_time, true, false, nTime);
 #ifdef WRITE_TO_BUFFER
-			WriteToBuffer(&m_depthmap, m_pColorRGBX, frameIndex);
+			if (frameIndex < framesCount)
+				WriteToBuffer(&m_depthmap, m_pColorRGBX, frameIndex);
+			else
+				frameIndex = framesCount - 1;
 #endif
-			if (++frameIndex == framesCount)
+			if (++frameIndex >= framesCount)
 				state = DS_COMPLETE;
 			printf("Writing frame %d/%d \r", frameIndex, framesCount);
 			break;

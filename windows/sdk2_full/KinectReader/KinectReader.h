@@ -13,6 +13,10 @@
 #include <Kinect.h>
 #include <windows.h>
 #include <chrono>
+#include <thread>
+#include "opencv2\opencv.hpp"
+#include "opencv2\core\core.hpp"
+#include "opencv2\highgui.hpp"
 static const int        cDepthWidth = 512;
 static const int        cDepthHeight = 424;
 static const int        cColorWidth = 1920;
@@ -75,6 +79,7 @@ struct Depthmap
 		memcpy(body_skipped, dmptr->body_skipped, cDepthSize*sizeof(bool));
 	}
 };
+
 struct Picture
 {
 	RGBQUAD *data;
@@ -102,6 +107,61 @@ struct Picture
 	void copyfrom(RGBQUAD *dataptr)
 	{
 		memcpy(data, dataptr, cColorSize*sizeof(RGBQUAD));
+	}
+};
+class EncodedPicture
+{
+	std::vector<uchar> data;
+	std::thread compression_thread;
+public:
+	void encode(const RGBQUAD *picdata)
+	{
+		cv::Mat pic_matrix(cColorHeight, cColorWidth, CV_8UC3);
+		for (int i = 0; i < cColorSize; i++)
+		{
+			pic_matrix.data[i * 3] = picdata[i].rgbBlue;
+			pic_matrix.data[i * 3 + 1] = picdata[i].rgbGreen;
+			pic_matrix.data[i * 3 + 2] = picdata[i].rgbRed;
+		}
+		std::vector<int> cparams;
+		cparams.push_back(cv::IMWRITE_PNG_STRATEGY);
+		cparams.push_back(cv::IMWRITE_PNG_STRATEGY_RLE);
+		cv::imencode(".png", pic_matrix, data,cparams);
+	}
+	cv::Mat decode()
+	{
+		return cv::imdecode(data, cv::IMREAD_COLOR);
+	}
+
+	void copyfrom(RGBQUAD *dataptr)
+	{
+		compression_thread = std::thread(&EncodedPicture::encode, this, dataptr);
+		//encode(dataptr);
+	}
+	~EncodedPicture()
+	{
+		compression_thread.detach();
+	}
+	EncodedPicture(const Picture &pic)
+	{
+		encode(pic.data);
+	}
+	EncodedPicture() {}
+	//operator Picture()
+	//{
+	//	cv::Mat pic_matrix = decode();
+	//	Picture pic;
+	//	for (int i = 0; i < cColorSize; i++)
+	//	{
+	//		pic.data[i].rgbBlue = pic_matrix.data[i * 3];
+	//		pic.data[i].rgbGreen = pic_matrix.data[i * 3 + 1];
+	//		pic.data[i].rgbRed = pic_matrix.data[i * 3 + 2];
+	//	}
+	//	return pic;
+	//}
+	operator cv::Mat()
+	{
+		return decode();
 	}
 };
 struct Skeleton
