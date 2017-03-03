@@ -143,6 +143,23 @@ int WritePly(const char *filename, pointcloud map)
 	delete[] countbuf;
 	return ply_close(ply_file);
 }
+void WriteNpyCloud(const std::string &filename, pointcloud map)
+{
+	std::vector<float> clouddata;
+	int cloudsize = 0;
+	for (int i = 0; i < cDepthHeight*cDepthWidth; i++)
+	{
+		if (!map.second[i])
+		{
+			clouddata.push_back(map.first[i].X);
+			clouddata.push_back(map.first[i].Y);
+			clouddata.push_back(map.first[i].Z);
+			cloudsize++;
+		}
+	}
+	const unsigned int shape[] = { cloudsize, 3 };
+	cnpy::npy_save(filename, &clouddata[0], shape, 2, "w");
+}
 void npy_to_cloud(cnpy::NpyArray arr, pointcloud map, UINT16 *depthbuf, bool normalised = false)
 {
 	for (int i = 0; i < cDepthHeight*cDepthWidth; i++)
@@ -173,12 +190,24 @@ int main(int argc, char *argv[])
 	}
 	int frames = 100;
 	bool normalised = false;
-	if (argc > 3)
+	bool write_npy = false;
+	for (int argi = 3; argi<argc; argi++)
 	{
-		if (argv[3][0] == '-')
-			normalised = true;
+		if (argv[argi][0] == '-')
+		{
+			if (std::string(argv[argi]) == "-npy")
+			{
+				write_npy = true;
+			}
+			else
+			{
+				normalised = true;
+			}
+		}
 		else
-			frames = atoi(argv[3]);
+		{
+			frames = atoi(argv[argi]);
+		}
 	}
 	std::string input_folder(argv[1]), output_folder(argv[2]);
 	cnpy::NpyArray arr;
@@ -193,17 +222,24 @@ int main(int argc, char *argv[])
 		return 0;
 	Sleep(2000);
 	int frames_skipped = 0;
-	for (int i = 1; i < frames+1; i++)
+	for (int i = 0; i < frames; i++)
 	{
 		if (file_exist(input_folder + "/" + std::to_string(i) + ".npy"))
 		{
 			arr = cnpy::npy_load(input_folder + "/" + std::to_string(i) + ".npy");
 			npy_to_cloud(arr, cloud, depthbuf, normalised);
-			WritePly((output_folder + "/" + std::to_string(i) + ".ply").c_str(), cloud);
+			if (write_npy)
+			{
+				WriteNpyCloud(output_folder + "/" + std::to_string(i) + ".npy", cloud);
+			}
+			else
+			{
+				WritePly((output_folder + "/" + std::to_string(i) + ".ply").c_str(), cloud);
+			}
 		}
 		else
 			frames_skipped++;
-		std::cout << "\r" << i << " out of " << frames << " frames converted";
+		std::cout << "\r" << i+1 << " out of " << frames << " frames converted";
 		if (frames_skipped>0)
 			std::cout << ", " << frames_skipped << " do not exist";
 		std::cout << std::flush;
