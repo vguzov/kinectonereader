@@ -24,9 +24,10 @@ c:\users\vladimir\cv\kinectonereader\convert\npytoply_vs\npytoply_vs\cnpy/cnpy.h
               T=float
           ]
   Создание кода
-  1 of 616 functions ( 0.2%) were compiled, the rest were copied from previous compilation.
+c:\users\vladimir\cv\kinectonereader\convert\npytoply_vs\npytoply_vs\rply\rply.c(481): warning C4700: использована неинициализированная локальная переменная "ply"
+  253 of 616 functions (41.1%) were compiled, the rest were copied from previous compilation.
     0 functions were new in current compilation
-    24 functions had inline decision re-evaluated but remain unchanged
+    37 functions had inline decision re-evaluated but remain unchanged
   Создание кода завершено
   NpyToPly_VS.vcxproj -> C:\Users\Vladimir\cv\kinectonereader\convert\NpyToPly_VS\Release\NpyToPly_VS.exe
   NpyToPly_VS.vcxproj -> C:\Users\Vladimir\cv\kinectonereader\convert\NpyToPly_VS\Release\NpyToPly_VS.pdb (Full PDB)

@@ -93,21 +93,27 @@ backgroundCount(200)
 int WriteNpy(const char *filename, Depthmap map, bool writebody)
 {
 	const unsigned int shape[] = { cDepthHeight, cDepthWidth };
+	int *depthbuf = new int[cDepthSize];
 	for (int i = 0; i < cDepthSize; i++)
 	{
 		if (map.getskipped(writebody)[i])
 		{
-			map.depth[i] = -1;
+			depthbuf[i] = -1;
 		}
 		else
 		{
 			if (map.depth[i] < 0)
 			{
-				map.depth[i] = -map.depth[i];
+				depthbuf[i] = -map.depth[i];
+			}
+			else
+			{
+				depthbuf[i] = map.depth[i];
 			}
 		}
 	}
-	cnpy::npy_save(std::string(filename), map.depth, shape, 2, "w");
+	cnpy::npy_save(std::string(filename), depthbuf, shape, 2, "w");
+	delete[] depthbuf;
 	return 1;
 }
 inline float fillnan(float x)

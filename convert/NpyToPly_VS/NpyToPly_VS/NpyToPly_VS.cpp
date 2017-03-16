@@ -239,6 +239,19 @@ int main(int argc, char *argv[])
 	Sleep(2000);
 	save_depth_camera_intrinsics(output_folder + "/depth_intrinsics.txt");
 	int frames_skipped = 0;
+	if (file_exist(input_folder + "/background.npy"))
+	{
+		arr = cnpy::npy_load(input_folder + "/background.npy");
+		npy_to_cloud(arr, cloud, depthbuf, normalised);
+		if (write_npy)
+		{
+			WriteNpyCloud(output_folder + "/background.npy", cloud);
+		}
+		else
+		{
+			WritePly((output_folder + "/background.ply").c_str(), cloud);
+		}
+	}
 	for (int i = 0; i < frames; i++)
 	{
 		if (file_exist(input_folder + "/" + std::to_string(i) + ".npy"))
