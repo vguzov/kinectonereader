@@ -18,11 +18,12 @@
 #include <cstdio>
 #include <windows.h>
 
-#define WRITE_TO_BUFFER
-#define WRITE_NPY
-//#define NO_PIC
-//#define REAL_PLY
-//#define COMPRESS_IMAGES
+#define WRITE_TO_BUFFER //Delay writing on disk
+#define WRITE_NPY //Write to .npy instead of .ply
+#define ADD_FULL_FRAMES //Add *_full.[npy|ply] files with background included
+//#define NO_PIC  //No optical photo
+//#define REAL_PLY //Convert to realistic point cloud (indev)
+//#define COMPRESS_IMAGES //In-memory image compression (heavily reduces capture framerate)
 
 #ifndef HINST_THISCOMPONENT
 EXTERN_C IMAGE_DOS_HEADER __ImageBase;
@@ -58,7 +59,7 @@ m_pCoordinateMapper(NULL),
 m_pMultiSourceFrameReader(NULL),
 m_pDepthCoordinates(NULL),
 m_pColorRGBX(NULL),
-framesCount(100),
+framesCount(50),
 frameIndex(0),
 backgroundCount(200)
 {
@@ -142,7 +143,7 @@ int WriteRealPly(const char *filename, Pointcloud map)
 	ply_file = ply_create(filename,PLY_LITTLE_ENDIAN, NULL, 0, NULL);
 	if (ply_file == NULL)
 		return 0;
-	ply_add_comment(ply_file, "MSU Graphics and Media Lab, 2016");
+	ply_add_comment(ply_file, "MSU Graphics and Media Lab, 2017");
 	ply_add_element(ply_file, "vertex", vertex_count);
 	ply_add_property(ply_file, "x", PLY_FLOAT32, PLY_CHAR, PLY_CHAR);
 	ply_add_property(ply_file, "y", PLY_FLOAT32, PLY_CHAR, PLY_CHAR);
@@ -214,7 +215,7 @@ int WritePly(const char *filename, Depthmap map, bool writebody)
 	ply_file = ply_create(filename,PLY_LITTLE_ENDIAN, NULL, 0, NULL);
 	if (ply_file == NULL)
 		return 0;
-	ply_add_comment(ply_file, "MSU Graphics and Media Lab, 2016");
+	ply_add_comment(ply_file, "MSU Graphics and Media Lab, 2017");
 	ply_add_element(ply_file, "vertex", vertex_count);
 	ply_add_property(ply_file, "x", PLY_FLOAT32, PLY_CHAR, PLY_CHAR);
 	ply_add_property(ply_file, "y", PLY_FLOAT32, PLY_CHAR, PLY_CHAR);
@@ -332,6 +333,9 @@ void CCoordinateMappingBasics::FlushBuffer()
 #endif
 #ifdef WRITE_NPY
 		WriteNpy((filename_temp + ".npy").c_str(), m_depthbuffer[source_frame], true);
+#ifdef ADD_FULL_FRAMES
+		WriteNpy((filename_temp + "_full.npy").c_str(), m_depthbuffer[source_frame], false);
+#endif
 #else
 #ifdef REAL_PLY
 		Pointcloud cloud = ConvertToPointcloud(m_depthbuffer[source_frame], true);
@@ -340,6 +344,9 @@ void CCoordinateMappingBasics::FlushBuffer()
 		delete[] cloud.second;
 #else
 		WritePly((filename_temp + ".ply").c_str(), m_depthbuffer[source_frame], true);
+#ifdef ADD_FULL_FRAMES
+		WritePly((filename_temp + "_full.ply").c_str(), m_depthbuffer[source_frame], false);
+#endif
 #endif
 #endif
 		HandleJoints(filename_temp + ".txt", m_jointbuffer[frame].depth_joints, m_jointbuffer[frame].camera_joints, JointType_Count);
@@ -451,6 +458,12 @@ void CCoordinateMappingBasics::WriteLogHead()
 #else
 	launch_params.push_back(std::pair<std::string, bool>("REAL_PLY", false));
 #endif
+#ifdef ADD_FULL_FRAMES
+	launch_params.push_back(std::pair<std::string, bool>("ADD_FULL_FRAMES", true));
+#else
+	launch_params.push_back(std::pair<std::string, bool>("ADD_FULL_FRAMES", false));
+#endif
+
 	logger.writeHead(framesCount, m_skipped_frames_counter, backgroundCount, launch_params);
 }
 void CCoordinateMappingBasics::WriteToBuffer(Depthmap *dm, RGBQUAD *pic, int framenum)

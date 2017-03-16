@@ -1,6 +1,7 @@
 #include <string>
 #include <vector>
 #include <iostream>
+#include <fstream>
 #include <windows.h>
 #include "stdafx.h"
 #include <Kinect.h>
@@ -181,11 +182,26 @@ void npy_to_cloud(cnpy::NpyArray arr, pointcloud map, UINT16 *depthbuf, bool nor
 	//	std::cout << depthbuf[i]<<": "<<map.first[i].X << ", " << map.first[i].Y << ", " << map.first[i].Z << std::endl;
 	//}
 }
+void save_depth_camera_intrinsics(std::string filename)
+{
+	std::ofstream outfile;
+	CameraIntrinsics ci;
+	m_pCoordinateMapper->GetDepthCameraIntrinsics(&ci);
+	outfile.open(filename, std::ios::out);
+	outfile << "FOCAL_X: " << ci.FocalLengthX <<std::endl;
+	outfile << "FOCAL_Y: " << ci.FocalLengthY << std::endl;
+	outfile << "PRINCIPAL_X: " << ci.PrincipalPointX << std::endl;
+	outfile << "PRINCIPAL_Y: " << ci.PrincipalPointY << std::endl;
+	outfile << "RAD_DIST_2: " << ci.RadialDistortionSecondOrder << std::endl;
+	outfile << "RAD_DIST_4: " << ci.RadialDistortionFourthOrder << std::endl;
+	outfile << "RAD_DIST_6: " << ci.RadialDistortionSixthOrder << std::endl;
+	outfile.close();
+}
 int main(int argc, char *argv[])
 {
 	if (argc < 3)
 	{
-		std::cout << "Usage: " <<argv[0]<< "input_folder output_folder [frames]"<<std::endl;
+		std::cout << "Usage: " <<argv[0]<< "input_folder output_folder [frames] [-norm|-npy]"<<std::endl;
 		return 0;
 	}
 	int frames = 100;
@@ -221,6 +237,7 @@ int main(int argc, char *argv[])
 	if (!SUCCEEDED(CreateMapper()))
 		return 0;
 	Sleep(2000);
+	save_depth_camera_intrinsics(output_folder + "/depth_intrinsics.txt");
 	int frames_skipped = 0;
 	for (int i = 0; i < frames; i++)
 	{
@@ -235,6 +252,19 @@ int main(int argc, char *argv[])
 			else
 			{
 				WritePly((output_folder + "/" + std::to_string(i) + ".ply").c_str(), cloud);
+			}
+			if (file_exist(input_folder + "/" + std::to_string(i) + "_full.npy"))
+			{
+				arr = cnpy::npy_load(input_folder + "/" + std::to_string(i) + "_full.npy");
+				npy_to_cloud(arr, cloud, depthbuf, normalised);
+				if (write_npy)
+				{
+					WriteNpyCloud(output_folder + "/" + std::to_string(i) + "_full.npy", cloud);
+				}
+				else
+				{
+					WritePly((output_folder + "/" + std::to_string(i) + "_full.ply").c_str(), cloud);
+				}
 			}
 		}
 		else
